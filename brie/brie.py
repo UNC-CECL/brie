@@ -21,7 +21,7 @@ class Brie:
         self._make_gif = True  # make a gif on the model run (KA: plot_on must be TRUE)
         self._plot_on = True  # plot during the model run
         self._sedstrat_on = False  # generate stratigraphy at a certain location
-        self._bseed = True  # KA: used for testing discretization
+        self._bseed = False  # KA: used for testing discretization
 
         # general parameters
         self._rho_w = 1025  # density of water [kg/m^3]
