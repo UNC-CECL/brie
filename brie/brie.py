@@ -96,7 +96,10 @@ class Brie:
         # does not contribute to tidal prism
         self._marsh_cover = 0.5
 
-        # calculated parameters
+        ###############################################################################
+        # Dependent variables
+        ###############################################################################
+        
         self._u_e_star = self._u_e / np.sqrt(self._g * self._a0)  # equilibrium inlet velocity (non-dimensional)
         self._Vd_max = self._w_b_crit * self._h_b_crit  # max deficit volume m3/m
         w_s = (
@@ -108,7 +111,7 @@ class Brie:
         phi = (
             16 * e_s * c_s / (15 * np.pi * R * self._g)
         )  # phi from aleja/ashton and trueba/ashton
-        z0 = (
+        self._z0 = (
             2 * self._wave_height / 0.78
         )  # minimum depth of integration (very simple approximation of breaking wave depth based on offshore wave height)
         self._d_sf = (
@@ -116,14 +119,14 @@ class Brie:
         )  # 0.018*wave_height*wave_period*sqrt(g/(R*grain_size)); #depth shoreface m #Hallermeier (1983) or  houston (1995)
         self._k_sf = (
             (3600 * 24 * 365)
-            / (self._d_sf - z0)
+            / (self._d_sf - self._z0)
             * (
                 self._g ** (15 / 4)
                 * self._wave_height ** 5
                 * phi
                 * wave_period ** (5 / 2)
                 / (1024 * np.pi ** (5 / 2) * w_s ** 2)
-                * (4 / 11 * (1 / z0 ** (11 / 4) - 1 / (self._d_sf ** (11 / 4))))
+                * (4 / 11 * (1 / self._z0 ** (11 / 4) - 1 / (self._d_sf ** (11 / 4))))
             )
         )
         self._s_sf_eq = (
@@ -228,6 +231,20 @@ class Brie:
         self._inlet_beta = np.float32(np.zeros(np.size(np.arange(1, self._nt, self._dtsave))))
         self._inlet_delta = np.float32(np.zeros(np.size(np.arange(1, self._nt, self._dtsave))))
         self._inlet_ai = np.int32(np.zeros(np.size(np.arange(1, self._nt, self._dtsave))))
+        
+        # KA - added these back after Eric's rewrite because I needed them for testing
+        c_idx = np.uint8(np.zeros((self._ny,1000)))
+        bar_strat_x = self._x_b[0]+1000; # cross-shore location where to record stratigraphy. I guess would be better to do it at one instant in time rather than space?
+        self._x_t_save = np.int32(np.zeros((self._ny,np.size(np.arange(1, self._nt, self._dtsave)))))
+        self._x_t_save[:,0] = self._x_t  # KA: for some reason this rounds down to 1099 and not up to 1100...why?
+        self._x_s_save = np.int32(np.zeros((self._ny,np.size(np.arange(1, self._nt, self._dtsave)))))
+        self._x_s_save[:,0] = self._x_s
+        self._x_b_save = np.int32(np.zeros((self._ny,np.size(np.arange(1, self._nt, self._dtsave)))))
+        self._x_b_save[:,0] = self._x_b
+        self._h_b_save = np.float32(np.zeros((self._ny,np.size(np.arange(1, self._nt, self._dtsave))))) 
+        self._h_b_save[:,0] = self._h_b
+        self._s_sf_save = np.float32(np.zeros((self._ny,np.size(np.arange(1, self._nt, self._dtsave))))) 
+        self._s_sf_save[:,0] = self._s_sf_eq
 
     @property
     def dt(self):
@@ -708,7 +725,7 @@ class Brie:
                     + inlet_sink / (self._h_b[inlet_nex[j - 1]] + self._d_sf) / self._dy
                 )
 
-                # inlet statistics
+                # inlet age
                 # fancy lightweight way to keep track of where inlets are in the model
                 # KA: note that this differs from matlab version, here we do this all
                 # in the for loop
@@ -718,11 +735,6 @@ class Brie:
             new_inlet = np.array([])
 
             # inlet statistics
-            # fancy lightweight way to keep track of where inlets are in the model
-            # KA: note that this differs from matlab version, here just an object
-            # with the inlet initial index ids for each time step
-            # inlet_age[i-1] = self._inlet_idx_mat.astype('int32')
-
             if np.mod(self._time_index, self._dtsave) == 1:
                 # skip first time step (initial condition)
                 self._inlet_nr[np.fix(self._time_index / self._dtsave).astype(int)] = np.size(
@@ -731,7 +743,7 @@ class Brie:
                 self._inlet_migr[np.fix(self._time_index / self._dtsave).astype(int)] = np.mean(migr_up / self.dt)
 
                 if np.size(self._inlet_idx) != 0:
-                    self._inlet_Qs_in[np.fix(self._time_index / self._dtsave).astype(int)] = np.mean(Qs_in)
+                    self._inlet_Qs_in[np.fix(self._time_index / self._dtsave).astype(int)] = np.mean(Qs_in) 
                     self._inlet_alpha[np.fix(self._time_index / self._dtsave).astype(int)] = np.mean(alpha)
                     self._inlet_beta[np.fix(self._time_index / self._dtsave).astype(int)] = np.mean(beta)
                     self._inlet_delta[np.fix(self._time_index / self._dtsave).astype(int)] = np.mean(delta)
@@ -778,3 +790,42 @@ class Brie:
         self._x_t = self._x_t + x_t_dt
         self._x_b = self._x_b + x_b_dt + x_b_fld_dt
         self._h_b = self._h_b + h_b_dt
+        
+        
+        # save subset of BRIE variables (KA: I'm guessing this will go in the 
+        # pymt "finalize" function. Leave as is for now for testing.)
+        """save subset of BRIE variables"""
+        if np.mod(self._time_index, self._dtsave) == 1:
+            self._x_t_save[:,np.fix(self._time_index / self._dtsave).astype(int)] = self._x_t
+            self._x_s_save[:,np.fix(self._time_index / self._dtsave).astype(int)] = self._x_s
+            self._x_b_save[:,np.fix(self._time_index / self._dtsave).astype(int)] = self._x_b
+            self._h_b_save[:,np.fix(self._time_index / self._dtsave).astype(int)] = self._h_b
+            self._s_sf_save[:,np.fix(self._time_index / self._dtsave).astype(int)] = s_sf
+        
+## if last time step, save variables to external file
+#class Output:
+#    def finalize(self, brie_object) :
+#       
+#        self.Qoverwash = brie_object._Qoverwash
+#        self.b_out.x_s_save = self._x_s_save
+#        self.b_out.x_b_save = self._x_s_save
+#        self.b_out.h_b_save = self._h_b_save
+#        self.b_out.s_sf_save = self._s_sf_save
+#        self.b_out.z0 = self._z0
+#        self.b_out.d_sf = self._d_sf
+#        self.b_out.k_sf = self._k_sf
+#        self.b_out.s_sf_eq = self._s_sf_eq
+#    
+#        if self._inlet_model_on :
+#            self.b_out.inlet_age = self._inlet_age       # KA: note this differs from Jaap's variable
+#            self.b_out.inlet_nr = self._inlet_nr
+#            self.b_out.inlet_migr = self._inlet_migr
+#            self.b_out.inlet_ai = self._inlet_ai
+#            self.b_out.inlet_alpha = self._inlet_alpha
+#            self.b_out.inlet_beta = self._inlet_beta
+#            self.b_out.inlet_delta = self._inlet_delta;
+#            self.b_out.inlet_Qs_in = self._inlet_Qs_in
+#            self.b_out.Qinlet = (self._Qinlet / self._dt) # put into m3/yr 
+#            
+
+        
