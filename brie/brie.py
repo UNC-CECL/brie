@@ -2,6 +2,7 @@ import numpy as np
 from numpy.lib.scimath import sqrt as csqrt, power as cpower
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import spsolve
+#import matplotlib.pyplot as plt
 
 
 def inlet_fraction(self, a, b, c, d, I):
@@ -18,7 +19,7 @@ class Brie:
         self._barrier_model_on = True  # overwash and shoreface formulations on or off
         self._ast_model_on = True  # alongshore transport on or off
         self._inlet_model_on = True  # inlets on or off
-        self._make_gif = True  # make a gif on the model run (KA: plot_on must be TRUE)
+        self._make_gif = False  # make a gif on the model run (KA: plot_on must be TRUE)
         self._plot_on = True  # plot during the model run
         self._sedstrat_on = False  # generate stratigraphy at a certain location
         self._bseed = False  # KA: used for testing discretization
@@ -199,6 +200,7 @@ class Brie:
         # Initial conditions
         ###############################################################################
 
+        self._time_index = 1
         self._x_t = (self._z - self._d_sf) / self._s_background + np.zeros(self._ny)  # position shoreface toe [m]
 
         # KA - used for seeding, testing discretization
@@ -206,7 +208,6 @@ class Brie:
             if xs is None or wave_angle is None:
                 raise ValueError("if bseed is True, xs and wave_angle must be provided")
             self._x_s = xs
-            # self._x_s = b_in.xs
             self._wave_angle = wave_angle
         else:
             self._x_s = np.random.rand(self._ny) + self._d_sf / self._s_sf_eq + self._x_t  # position shoreline [m]
@@ -222,13 +223,12 @@ class Brie:
             float
         )  # KA: we use this variable for NaN operations
         self._inlet_y = np.zeros(self._ny)
-        y = np.arange(0, self._dy * self._ny, self._dy)  # alongshore array
+        y = np.arange(0, self._dy * self._ny, self._dy)  # alongshore array [KA: just used for plotting]
 
         # variables used for saving data [KA: changed all self.dt to self._dt]
         self._t = np.arange(self._dt, (self._dt * self._nt) + self._dt, self._dt)  # time array
-        self._time_index = 1
-        self._Qoverwash = np.float32(np.zeros((int(self._nt),)))
-        self._Qoverwash_norm = np.float32(np.zeros((int(self._nt),)))
+        self._Qoverwash = np.float32(np.zeros(int(self._nt)))
+        self._Qoverwash_norm = np.float32(np.zeros(int(self._nt)))
         self._Qinlet = np.float32(np.zeros(int(self._nt)))
         self._inlet_age = []
         self._inlet_nr = np.uint16(np.zeros(np.size(np.arange(1, self._nt, self._dtsave))))
@@ -406,7 +406,7 @@ class Brie:
             # wave direction
             if self._bseed:
                 wave_ang = self._wave_angle[self._time_index - 1]
-                # wave_ang = b_in.wave_angle[self._time_index - 1]
+                
             else:
                 wave_ang = np.nonzero(self._wave_cdf > np.random.rand())[0][
                     0
@@ -656,11 +656,17 @@ class Brie:
                 # johnson flood-tidal delta of florida 2006)
                 if Vfld > Vfld_max:
                     I = 0.1
-
-                # calculate fractions based on I (KA: added self here b/c of error)
-                delta[j - 1] = inlet_fraction(self, 0, 1, 3, -3, I)
-                beta[j - 1] = inlet_fraction(self, 0, 1, 10, 3, I)
-                beta_r[j - 1] = inlet_fraction(self, 0, 1, 0.9, -3, I)
+                    
+                # calculate fractions based on I (KA: added self here b/c otherwise it produced an error)
+                # version 1: original BRIE upload (shoreline stable)
+                #delta[j - 1] = inlet_fraction(self, 0, 1, 3, -3, I)
+                #beta[j - 1] = inlet_fraction(self, 0, 1, 10, 3, I)
+                #beta_r[j - 1] = inlet_fraction(self, 0, 1, 0.9, -3, I)
+                
+                # version 2: from Neinhuis and Ashton 2016 (updated May 27, 2020)
+                delta[j - 1] = inlet_fraction(self, 0.05, 0.95, 3, -3, I) 
+                beta[j - 1] = inlet_fraction(self, 0, 0.9, 10, 3, I)
+                beta_r[j - 1] = inlet_fraction(self, 0, 0.9, 0.9, -3, I)
 
                 #            #{
                 #            humans affect inlets?
@@ -696,11 +702,11 @@ class Brie:
 
                 # migrate inlet indices (in m/dt)
                 migr_up[j - 1] = Qs_in[j - 1] * (alpha_r[j - 1] + alpha[j - 1]) / Ab_prv
-                migr_dw = (
-                    Qs_in[j - 1]
-                    * (alpha_r[j - 1] + beta_r[j - 1] + delta_r[j - 1])
-                    / Ab_nex
-                )
+#                migr_dw = (
+#                    Qs_in[j - 1]
+#                    * (alpha_r[j - 1] + beta_r[j - 1] + delta_r[j - 1])
+#                    / Ab_nex
+#                )
 
                 # calculate where in the grid cell the inlet is, and add the
                 # fractional migration to it
@@ -744,7 +750,7 @@ class Brie:
             # inlet statistics
             if np.mod(self._time_index, self._dtsave) == 1:
                 # skip first time step (initial condition)
-                self._inlet_nr[np.fix(self._time_index / self._dtsave).astype(int)] = np.size(
+                self._inlet_nr[np.fix(self._time_index / self._dtsave).astype(int)] = len(
                     self._inlet_idx
                 )  # number of inlets
                 self._inlet_migr[np.fix(self._time_index / self._dtsave).astype(int)] = np.mean(migr_up / self._dt)
@@ -808,12 +814,15 @@ class Brie:
             self._x_b_save[:,np.fix(self._time_index / self._dtsave).astype(int)] = self._x_b
             self._h_b_save[:,np.fix(self._time_index / self._dtsave).astype(int)] = self._h_b
             self._s_sf_save[:,np.fix(self._time_index / self._dtsave).astype(int)] = s_sf
-        
-# if last time step, only return necessary variables
+
+    ###############################################################################
+    # Finalize: only return necessary variables
+    ###############################################################################        
+
     def finalize(self):
 
         # self.__dict__  # to look at attributes        
-        del(self._t)
+        #del(self._t)
         del(self._inlet_y)
         del(self._inlet_idx)
         del(self._inlet_idx_mat)
@@ -830,7 +839,7 @@ class Brie:
 
         if self._inlet_model_on:
             self._Qinlet = (self._Qinlet / self._dt) # put into m3/yr
-            self._Qinlet_norm = (self._Qinlet / self._dt / self._dy) # put into m3/m/yr
+            self._Qinlet_norm = (self._Qinlet / self._dy) # put into m3/m/yr
         else:
             del(self._inlet_Qs_in)
             del(self._inlet_migr)
@@ -841,4 +850,70 @@ class Brie:
             del(self._inlet_delta)
             del(self._inlet_beta)
             del(self._inlet_alpha)
-        
+            
+    ###############################################################################
+    # plot
+    ###############################################################################        
+
+#    def plot(self):  
+#
+#        plt.ion() # interactive mode
+#        fig, axes = plt.subplots()
+#        axes.plot(y/1000,x_t, color="cornflowerblue")
+#        axes.plot(y/1000,x_s, color="gold")
+#        axes.plot(y/1000,x_b, color="teal")
+#        axes.fill_between(y/1000, -np.min(x_t)*2, x_t, color="royalblue")
+#        axes.fill_between(y/1000, x_b, np.max(x_b)*4, color="teal", alpha=0.6)
+#        axes.fill_between(y/1000, x_t, x_s, color="cornflowerblue", alpha=0.6)
+#        axes.fill_between(y/1000, x_s, x_b, color="gold", alpha=0.6)
+#        axes.legend(['x_t', 'x_s','x_b'])
+#        plt.xlabel('Alongshore (km)')
+#        plt.ylabel('Cross-shore (m)')
+#        plt.title('Time = ' + str(int(t[0])) +' yr')
+#        axes.set_xlim(0,ny*dy/1000)
+#        axes.set_ylim(-2000, 6000) # KA, will need to update later - placeholder
+#        #ratio = 0.4   # aspect ratio
+#        #axes.set_aspect(0.05)
+#        #axes.margins(0.5)
+#        #axes.set_aspect(1/axes.get_data_ratio())
+#        #axes.set_ylim(-np.min(x_t)-1000, np.max(x_s)+3000)
+#        fig.canvas.draw() # update figure
+#        
+#    if make_gif == 1:
+#        path = os.getcwd()
+#        os.mkdir(path+'/GIF')
+#        frames = []          
+#   
+## KA: for simplicity, we just have one type of output figure
+#            axes.clear()
+#            axes.fill_between(y/1000, -np.min(x_t)*2, x_t, color="royalblue")
+#            axes.fill_between(y/1000, x_b, np.max(x_b)*4, color="teal", alpha=0.6)
+#            axes.fill_between(y/1000, x_t, x_s, color="cornflowerblue", alpha=0.6)
+#            axes.fill_between(y/1000, x_s, x_b, color="gold", alpha=0.6)
+#            
+#           # KA: here I chose to only mark the inlets (all indices), and not where the
+#            # barrier volume is less than 0...need to go back and fix
+#            if np.size(inlet_idx) != 0 :
+#                axes.plot(y[np.hstack(inlet_idx)]/1000, 
+#                          x_s[np.hstack(inlet_idx)], 'kD')
+#            
+#            axes.legend(['x_t', 'x_s','x_b'])
+#            plt.xlabel('Alongshore (km)')
+#            plt.ylabel('Cross-shore (m)')
+#            plt.title('Time = ' + str(int(t[i-1])) +' yr')
+#            axes.set_xlim(0,ny*dy/1000)
+#            axes.set_ylim(-2000, 6000) # KA, will need to update later - placeholder
+#            fig.canvas.draw() # update figure
+#            
+#            if make_gif :
+#                filename = 'GIF/year_' + str(int(t[i-1]))+'.png'
+#                fig.savefig(filename, dpi=200)
+#                frames.append(imageio.imread(filename))
+#                os.remove(filename)
+#                
+#            fig.canvas.flush_events() # alternatively, plt.pause(0.0001)
+#            
+#    # make gif from saved png files
+#    if make_gif :
+#        imageio.mimsave(name+'.gif', frames, 'GIF-FI')
+#        os.rmdir(path+'/GIF')      

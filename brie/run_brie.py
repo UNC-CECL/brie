@@ -19,16 +19,16 @@ from brie import Brie
 ###############################################################################
 
 # subset of indices for testing grid discretization
-name   = 'python_grid_testing_inlets_on_full'
+name   = 'python_grid_testing_inlets_on_full_v5'
 param  = ['_dt','_dy'] 
 param1 = [0.01, 0.02, 0.025, 0.05, 0.08, 0.1, 0.2, 0.25]
-param2 = [50, 80, 100, 250, 400, 500, 800, 1000]    # different order than Jaap
+param2 = [1000, 800, 500, 400, 250, 100, 80, 50]  
 
 inputs_p1 = range(np.size(param1))
 inputs_p2 = range(np.size(param2))
 
 # import structures from Matlab
-mat = loadmat('matlab_grid_testing_inlets_on_V7pt1_v3_full.mat')
+mat = loadmat('matlab_grid_testing_inlets_on_V7pt1_v5_full.mat')
 
 output = np.empty( (np.size(param1), np.size(param2)), dtype=object)
     
@@ -49,20 +49,24 @@ def batchBrie(ii, jj, param1, param2, param, name, mat):
     model._plot_on = False
     model._make_gif = False
     model._inlet_model_on = True
-    model._bseed = True
+    model._bseed = True    
+    setattr(model, param[0], param1[ii]) # dt
+    setattr(model, param[1], param2[jj]) # dy
     model._nt = 1e3/param1[ii]  # timesteps for 1000 morphologic years
-    print('model timesteps for 1000 morphologic years = ', int(model._nt))
     
-    # get dependent variables and seed
+    # v5 - test against Jaap's paper Figure 9 initial parameters
+    model._a0  = 1.5    # higher tidal amplitude (0.5 m)
+    model._slr = 3e-3   # higher slr (2e-3 m/yr)
+    model._wave_height = 1.5  # higher wave height (1 m)
+    model._wave_period = 8    # lower wave period (8 s)
+    
+    # get dependent variables and seed wave angle and shoreline position
     Brie.dependent(model, wave_angle=wave_angle, xs=xs)
-    #model._xs = xs
-    #model._wave_angle = wave_angle
-        
-    setattr(model, param[0], param1[ii]) 
-    setattr(model, param[1], param2[jj]) 
     
+    # check that my updated variables are correct
     print('iterate through param1 = ', ii)
     print('iterate through param2 = ', jj)
+    print('model timesteps for 1000 morphologic years = ', int(model._nt))
     print(param[0], '=', param1[ii])
     print(param[1], '=', param2[jj])
      
