@@ -4,7 +4,7 @@ from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import spsolve
 #import matplotlib.pyplot as plt
 
-# this is a test
+# this is a test 2
 
 def inlet_fraction(self, a, b, c, d, I):
     """what are the inlet fractions"""
