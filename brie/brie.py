@@ -2,7 +2,6 @@ import numpy as np
 from numpy.lib.scimath import sqrt as csqrt, power as cpower
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import spsolve
-#import matplotlib.pyplot as plt
 
 # this is a test 2
 
