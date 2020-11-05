@@ -3,7 +3,6 @@ from numpy.lib.scimath import sqrt as csqrt, power as cpower
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import spsolve
 
-# this is a test 2
 
 def inlet_fraction(self, a, b, c, d, I):
     """what are the inlet fractions"""
@@ -17,12 +16,13 @@ class Brie:
 
         # which modules to run
         self._barrier_model_on = True  # overwash and shoreface formulations on or off
-        self._ast_model_on = True  # alongshore transport on or off
-        self._inlet_model_on = True  # inlets on or off
-        self._make_gif = False  # make a gif on the model run (KA: plot_on must be TRUE)
-        self._plot_on = True  # plot during the model run
-        self._sedstrat_on = False  # generate stratigraphy at a certain location
-        self._bseed = False  # KA: used for testing discretization
+        self._ast_model_on = True      # alongshore transport on or off
+        self._inlet_model_on = True    # inlets on or off
+        self._make_gif = False         # make a gif on the model run (KA: plot_on must be TRUE)
+        self._plot_on = True           # plot during the model run
+        self._sedstrat_on = False      # generate stratigraphy at a certain location
+        self._bseed = False            # KA: used for testing discretization
+        self._b3d_barrier_model_on = False # KA: added this because I wasn't sure how else to pass the data from B3D
 
         # general parameters
         self._rho_w = 1025  # density of water [kg/m^3]
@@ -101,6 +101,8 @@ class Brie:
         
         # KA: I added this function because I need to be able to modify the 
         # initialization parameters, of which the variables below are dependent
+
+        self._RNG = np.random.default_rng(seed=1973)
         
         ###############################################################################
         # Dependent variables
@@ -186,7 +188,7 @@ class Brie:
         )
         # [m2/yr]
 
-        # timestepping implicit diffusion equation (KA: -1 for python indexing...scrappy)
+        # timestepping implicit diffusion equation (KA: -1 for python indexing)
         self._di = (
             np.r_[self._ny, np.arange(2, self._ny + 1), np.arange(1, self._ny + 1), np.arange(1, self._ny), 1]
             - 1
@@ -210,18 +212,15 @@ class Brie:
             self._x_s = xs
             self._wave_angle = wave_angle
         else:
-            self._x_s = np.random.rand(self._ny) + self._d_sf / self._s_sf_eq + self._x_t  # position shoreline [m]
+            self._x_s = self._RNG.random(self._ny) + self._d_sf / self._s_sf_eq + self._x_t  # position shoreline [m]
+            # self._x_s = np.random.rand(self._ny) + self._d_sf / self._s_sf_eq + self._x_t  # position shoreline [m]
         
         self._x_b = self._d_sf / self._s_sf_eq + self._w_b_crit + self._x_t  # position back barrier [m]
         self._h_b = 2 + np.zeros(self._ny)  # height barrier [m]
         self._barrier_volume = np.array([])
         self._inlet_idx_close_mat = np.array([])
-        self._inlet_idx = (
-            []
-        )  # KA: originally a matlab cell, here a list that is appended after first time step
-        self._inlet_idx_mat = np.array([]).astype(
-            float
-        )  # KA: we use this variable for NaN operations
+        self._inlet_idx = ([])  # KA: originally a matlab cell, here a list that is appended after first time step
+        self._inlet_idx_mat = np.array([]).astype(float)  # KA: we use this variable for NaN operations
         self._inlet_y = np.zeros(self._ny)
         y = np.arange(0, self._dy * self._ny, self._dy)  # alongshore array [KA: just used for plotting]
 
@@ -231,37 +230,78 @@ class Brie:
         self._Qoverwash_norm = np.float32(np.zeros(int(self._nt)))
         self._Qinlet = np.float32(np.zeros(int(self._nt)))
         self._inlet_age = []
-        self._inlet_nr = np.uint16(np.zeros(np.size(np.arange(1, self._nt, self._dtsave))))
-        self._inlet_migr = np.int16(np.zeros(np.size(np.arange(1, self._nt, self._dtsave))))
-        self._inlet_Qs_in = np.float32(np.zeros(np.size(np.arange(1, self._nt, self._dtsave))))
-        self._inlet_alpha = np.float32(np.zeros(np.size(np.arange(1, self._nt, self._dtsave))))
-        self._inlet_beta = np.float32(np.zeros(np.size(np.arange(1, self._nt, self._dtsave))))
-        self._inlet_delta = np.float32(np.zeros(np.size(np.arange(1, self._nt, self._dtsave))))
-        self._inlet_ai = np.int32(np.zeros(np.size(np.arange(1, self._nt, self._dtsave))))
+        # KA: changed the saving arrays from matlab version to enable saving every time step in python, e.g., now if I
+        # use the default dtsave=1000, the first value in these arrays (i.e., [0]) are the initial conditions and the
+        # second value (i.e., [1]) is the first saving index at time_step=1000
+        self._inlet_nr = np.uint16(np.zeros(np.size(np.arange(0, self._nt, self._dtsave))))
+        self._inlet_migr = np.int16(np.zeros(np.size(np.arange(0, self._nt, self._dtsave))))
+        self._inlet_Qs_in = np.float32(np.zeros(np.size(np.arange(0, self._nt, self._dtsave))))
+        self._inlet_alpha = np.float32(np.zeros(np.size(np.arange(0, self._nt, self._dtsave))))
+        self._inlet_beta = np.float32(np.zeros(np.size(np.arange(0, self._nt, self._dtsave))))
+        self._inlet_delta = np.float32(np.zeros(np.size(np.arange(0, self._nt, self._dtsave))))
+        self._inlet_ai = np.int32(np.zeros(np.size(np.arange(0, self._nt, self._dtsave))))
         
         # KA - added these back after Eric's rewrite because I needed them for testing
         c_idx = np.uint8(np.zeros((self._ny,1000)))
-        bar_strat_x = self._x_b[0]+1000; # cross-shore location where to record stratigraphy. I guess would be better to do it at one instant in time rather than space?
-        self._x_t_save = np.int32(np.zeros((self._ny,np.size(np.arange(1, self._nt, self._dtsave)))))
+        bar_strat_x = self._x_b[0]+1000  # cross-shore location where to record stratigraphy. I guess would be better to do it at one instant in time rather than space?
+        self._x_t_save = np.int32(np.zeros((self._ny,np.size(np.arange(0, self._nt, self._dtsave)))))
         self._x_t_save[:,0] = self._x_t  # KA: for some reason this rounds down to 1099 and not up to 1100...why?
-        self._x_s_save = np.int32(np.zeros((self._ny,np.size(np.arange(1, self._nt, self._dtsave)))))
+        self._x_s_save = np.int32(np.zeros((self._ny,np.size(np.arange(0, self._nt, self._dtsave)))))
         self._x_s_save[:,0] = self._x_s
-        self._x_b_save = np.int32(np.zeros((self._ny,np.size(np.arange(1, self._nt, self._dtsave)))))
+        self._x_b_save = np.int32(np.zeros((self._ny,np.size(np.arange(0, self._nt, self._dtsave)))))
         self._x_b_save[:,0] = self._x_b
-        self._h_b_save = np.float32(np.zeros((self._ny,np.size(np.arange(1, self._nt, self._dtsave))))) 
+        self._h_b_save = np.float32(np.zeros((self._ny,np.size(np.arange(0, self._nt, self._dtsave)))))
         self._h_b_save[:,0] = self._h_b
-        self._s_sf_save = np.float32(np.zeros((self._ny,np.size(np.arange(1, self._nt, self._dtsave))))) 
+        self._s_sf_save = np.float32(np.zeros((self._ny,np.size(np.arange(0, self._nt, self._dtsave)))))
         self._s_sf_save[:,0] = self._s_sf_eq
 
-    @property
-    def dt(self):
-        return self._dt
+        # initialize empty arrays for barrier model (added by KA for coupling)
+        self._x_t_dt = np.zeros(self._ny)
+        self._x_b_dt = np.zeros(self._ny)
+        self._x_s_dt = np.zeros(self._ny)
+        self._h_b_dt = np.zeros(self._ny)
 
     @property
-    def nt(self):
-        return self._nt
+    def time_index(self):
+        return self._time_index
 
-    def u(self, a_star, gam, ah_star, a0):
+    # @property
+    # def nt(self):
+    #     return self._nt
+
+    @property
+    def x_t_dt(self):
+        return self._x_t_dt
+
+    @property
+    def x_s_dt(self):
+        return self._x_s_dt
+
+    @property
+    def x_b_dt(self):
+        return self._x_b_dt
+
+    @property
+    def h_b_dt(self):
+        return self._h_b_dt
+
+    @property
+    def x_t(self):
+        return self._x_t
+
+    @property
+    def x_s(self):
+        return self._x_s
+
+    @property
+    def x_b(self):
+        return self._x_b
+
+    @property
+    def h_b(self):
+        return self._h_b
+
+    def u(self, a_star, gam, ah_star):
         """new explicit relationship between boundary conditions and inlet area"""
         return np.sqrt(self._g * self._a0) * np.sqrt(
             gam
@@ -375,14 +415,14 @@ class Brie:
 
             # changes
             ff = (self._z - self._s_background * self._x_b - d_b) / (self._z - self._s_background * self._x_b + self._h_b)
-            x_t_dt = (4 * Qsf * (self._h_b + self._d_sf) / (self._d_sf * (2 * self._h_b + self._d_sf))) + (
+            self._x_t_dt = (4 * Qsf * (self._h_b + self._d_sf) / (self._d_sf * (2 * self._h_b + self._d_sf))) + (
                 2 * self._dt * self._slr / s_sf
             )
-            x_s_dt = 2 * Qow / ((2 * self._h_b) + self._d_sf) / (1 - ff) - (
+            self._x_s_dt = 2 * Qow / ((2 * self._h_b) + self._d_sf) / (1 - ff) - (
                 4 * Qsf * (self._h_b + self._d_sf) / (((2 * self._h_b) + self._d_sf) ** 2)
             )
-            x_b_dt = Qow_b / (self._h_b + d_b)
-            h_b_dt = (Qow_h / w) - (self._dt * self._slr)
+            self._x_b_dt = Qow_b / (self._h_b + d_b)
+            self._h_b_dt = (Qow_h / w) - (self._dt * self._slr)
 
             # how much q overwash w in total [m3/yr] 
             self._Qoverwash[self._time_index - 1] = np.sum(self._dy * Qow_b / self._dt)
@@ -390,11 +430,18 @@ class Brie:
             # KA: added this additional variable to compare to Jaap's pub figures [m3/m/yr] 
             self._Qoverwash_norm[self._time_index - 1] = np.sum(Qow_b / self._dt)
 
+        elif (self._b3d_barrier_model_on):
+            # do nothing, x_t_dt, x_s_dt, x_b_dt, and h_b_dt all come from Barrier3d (is there a better way to do this?)
+            self._x_t_dt = self._x_t_dt
+            self._x_s_dt = self._x_s_dt
+            self._x_b_dt = self._x_b_dt
+            self._h_b_dt = self._h_b_dt
+
         else:
-            x_t_dt = 0
-            x_s_dt = 0
-            x_b_dt = 0
-            h_b_dt = 0
+            self._x_t_dt = np.zeros(self._ny)
+            self._x_s_dt = np.zeros(self._ny)
+            self._x_b_dt = np.zeros(self._ny)
+            self._h_b_dt = np.zeros(self._ny)
 
         if (
             self._ast_model_on
@@ -408,7 +455,8 @@ class Brie:
                 wave_ang = self._wave_angle[self._time_index - 1]
                 
             else:
-                wave_ang = np.nonzero(self._wave_cdf > np.random.rand())[0][
+                # wave_ang = np.nonzero(self._wave_cdf > np.random.rand())[0][
+                wave_ang = np.nonzero(self._wave_cdf > self._RNG.random())[0][
                     0
                 ]  # just get the first nonzero element
 
@@ -555,7 +603,7 @@ class Brie:
                     / ((8 / 3 / np.pi) * c_d * w[self._inlet_idx]),
                 )
                 a_star_eq = self.a_star_eq_fun(ah_star, gam, self._u_e_star)
-                u_eq = np.real(self.u(a_star_eq, gam, ah_star, self._a0))
+                u_eq = np.real(self.u(a_star_eq, gam, ah_star))
                 ai_eq = (
                     self._omega0
                     * (1 - self._marsh_cover)
@@ -733,8 +781,8 @@ class Brie:
                 self._Qinlet[self._time_index - 1] = self._Qinlet[self._time_index - 1] + inlet_sink  # m3 per time step
 
                 # add inlet sink to shoreline change
-                x_s_dt[inlet_nex[j - 1]] = (
-                    x_s_dt[inlet_nex[j - 1]]
+                self._x_s_dt[inlet_nex[j - 1]] = (
+                    self._x_s_dt[inlet_nex[j - 1]]
                     + inlet_sink / (self._h_b[inlet_nex[j - 1]] + self._d_sf) / self._dy
                 )
 
@@ -748,19 +796,19 @@ class Brie:
             self._new_inlet = np.array([])
 
             # inlet statistics
-            if np.mod(self._time_index, self._dtsave) == 1:
+            if np.mod(self._time_index, self._dtsave) == 0: # KA: modified this from matlab version so that I can save every time step in python
                 # skip first time step (initial condition)
-                self._inlet_nr[np.fix(self._time_index / self._dtsave).astype(int)] = len(
+                self._inlet_nr[np.fix(self._time_index / self._dtsave).astype(int) - 1] = len(
                     self._inlet_idx
                 )  # number of inlets
-                self._inlet_migr[np.fix(self._time_index / self._dtsave).astype(int)] = np.mean(migr_up / self._dt)
+                self._inlet_migr[np.fix(self._time_index / self._dtsave).astype(int) - 1] = np.mean(migr_up / self._dt)
 
                 if np.size(self._inlet_idx) != 0:
-                    self._inlet_Qs_in[np.fix(self._time_index / self._dtsave).astype(int)] = np.mean(Qs_in) 
-                    self._inlet_alpha[np.fix(self._time_index / self._dtsave).astype(int)] = np.mean(alpha)
-                    self._inlet_beta[np.fix(self._time_index / self._dtsave).astype(int)] = np.mean(beta)
-                    self._inlet_delta[np.fix(self._time_index / self._dtsave).astype(int)] = np.mean(delta)
-                    self._inlet_ai[np.fix(self._time_index / self._dtsave).astype(int)] = np.mean(ai_eq)
+                    self._inlet_Qs_in[np.fix(self._time_index / self._dtsave).astype(int) - 1] = np.mean(Qs_in)
+                    self._inlet_alpha[np.fix(self._time_index / self._dtsave).astype(int) - 1] = np.mean(alpha)
+                    self._inlet_beta[np.fix(self._time_index / self._dtsave).astype(int) - 1] = np.mean(beta)
+                    self._inlet_delta[np.fix(self._time_index / self._dtsave).astype(int) - 1] = np.mean(delta)
+                    self._inlet_ai[np.fix(self._time_index / self._dtsave).astype(int) - 1] = np.mean(ai_eq)
 
         else:  # inlet model not on
             Qs_in = 0  # KA, removed indexing here, doesn't appear necessary
@@ -790,30 +838,29 @@ class Brie:
                 self._x_s
                 + r_ipl
                 * (self._x_s[np.r_[1:self._ny, 0]] - 2 * self._x_s + self._x_s[np.r_[self._ny - 1, 0 : self._ny - 1]])
-                + x_s_dt
+                + self._x_s_dt
             )
 
             self._x_s = spsolve(
                 A, RHS
             )  # KA: will want to check this as a diff - accidentally overwrote while checking
         else:
-            self._x_s = self._x_s + x_s_dt
+            self._x_s = self._x_s + self._x_s_dt
 
         # how are the other moving boundaries changing?
-        self._x_t = self._x_t + x_t_dt
-        self._x_b = self._x_b + x_b_dt + x_b_fld_dt
-        self._h_b = self._h_b + h_b_dt
+        self._x_t = self._x_t + self._x_t_dt
+        self._x_b = self._x_b + self._x_b_dt + x_b_fld_dt
+        self._h_b = self._h_b + self._h_b_dt
         
         
-        # save subset of BRIE variables (KA: I'm guessing this will go in the 
-        # pymt "finalize" function. Leave as is for now for testing.)
+        # save subset of BRIE variables (KA: I changed this from mod = 1 to mod = 0 to allow for saving every 1 timestep)
         """save subset of BRIE variables"""
-        if np.mod(self._time_index, self._dtsave) == 1:
-            self._x_t_save[:,np.fix(self._time_index / self._dtsave).astype(int)] = self._x_t
-            self._x_s_save[:,np.fix(self._time_index / self._dtsave).astype(int)] = self._x_s
-            self._x_b_save[:,np.fix(self._time_index / self._dtsave).astype(int)] = self._x_b
-            self._h_b_save[:,np.fix(self._time_index / self._dtsave).astype(int)] = self._h_b
-            self._s_sf_save[:,np.fix(self._time_index / self._dtsave).astype(int)] = s_sf
+        if np.mod(self._time_index, self._dtsave) == 0:
+            self._x_t_save[:,np.fix(self._time_index / self._dtsave).astype(int) - 1] = self._x_t
+            self._x_s_save[:,np.fix(self._time_index / self._dtsave).astype(int) - 1] = self._x_s
+            self._x_b_save[:,np.fix(self._time_index / self._dtsave).astype(int) - 1] = self._x_b
+            self._h_b_save[:,np.fix(self._time_index / self._dtsave).astype(int) - 1] = self._h_b
+            self._s_sf_save[:,np.fix(self._time_index / self._dtsave).astype(int) - 1] = s_sf
 
     ###############################################################################
     # Finalize: only return necessary variables
