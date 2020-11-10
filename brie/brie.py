@@ -220,7 +220,7 @@ class Brie:
         self._inlet_idx = ([])  # KA: originally a matlab cell, here a list that is appended after first time step
         self._inlet_idx_mat = np.array([]).astype(float)  # KA: we use this variable for NaN operations
         self._inlet_y = np.zeros(self._ny)
-        y = np.arange(0, self._dy * self._ny, self._dy)  # alongshore array [KA: just used for plotting]
+        self._y = np.arange(100, self._dy * self._ny, self._dy)  # alongshore array [KA: just used for plotting]
 
         # variables used for saving data [KA: changed all self.dt to self._dt]
         self._t = np.arange(self._dt, (self._dt * self._nt) + self._dt, self._dt)  # time array
