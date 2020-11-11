@@ -1,12 +1,10 @@
 #! /usr/bin/env python
 from setuptools import find_packages, setup
 
-import versioneer
-
 
 setup(
     name="brie",
-    version=versioneer.get_version(),
+    version="0.1.0.dev0",
     author="Katherine Anarde",
     author_email="anardek@gmail.com",
     description="The Barrier Inlet Environment model",
@@ -20,9 +18,8 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Topic :: Scientific/Engineering :: Physics",
     ],
-    url="https://github.com/mcflugen/brie",
+    url="https://github.com/UNC-CECL/brie",
     license="MIT",
     install_requires=open("requirements.txt", "r").read().splitlines(),
     packages=find_packages(),
-    cmdclass=versioneer.get_cmdclass(),
 )

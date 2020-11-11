@@ -1,4 +1,2 @@
-include versioneer.py
-include brie/_version.py
 include requirements.txt
 include LICENSE
