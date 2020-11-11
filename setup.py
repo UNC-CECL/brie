@@ -34,7 +34,7 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Topic :: Scientific/Engineering :: Physics",
     ],
-    keywords=["earth science", "coasts", "barrier islands"],
+    keywords=["earth science", "coast", "barrier inlet"],
     url="https://github.com/UNC-CECL/brie",
     license="MIT",
     packages=find_packages(),
