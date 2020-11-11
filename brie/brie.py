@@ -11,6 +11,13 @@ def inlet_fraction(self, a, b, c, d, I):
 
 class Brie:
     def __init__(self):
+        """The Barrier Inlet Environment model, BRIE.
+
+        Examples
+        --------
+        >>> from brie import Brie
+        >>> brie = Brie()
+        """
         # name of output file
         self._name = "ExampleBarrierPlot5"
 
