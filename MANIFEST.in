@@ -1,4 +1,5 @@
-include versioneer.py
-include brie/_version.py
 include requirements.txt
-include LICENSE
+include LICENSE.rst
+include README.rst
+include AUTHORS.rst
+include CHANGES.rst

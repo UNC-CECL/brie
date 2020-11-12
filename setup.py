@@ -1,17 +1,31 @@
 #! /usr/bin/env python
 from setuptools import find_packages, setup
 
-import versioneer
+def read(filename):
+    with open(filename, "r", encoding="utf-8") as fp:
+        return fp.read()
+
+
+long_description = u'\n\n'.join(
+    [
+        read('README.rst'),
+        read('AUTHORS.rst'),
+        read('CHANGES.rst'),
+    ]
+)
 
 
 setup(
     name="brie",
-    version=versioneer.get_version(),
+    version="0.1.0.dev0",
     author="Katherine Anarde",
     author_email="anardek@gmail.com",
     description="The Barrier Inlet Environment model",
-    long_description=open("README.rst", encoding="utf-8").read(),
+    long_description=long_description,
+    python_requires=">=3.6",
+    install_requires=open("requirements.txt", "r").read().splitlines(),
     classifiers=[
+        "Development Status :: 4 - Beta",
         "Intended Audience :: Science/Research",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
@@ -20,9 +34,8 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Topic :: Scientific/Engineering :: Physics",
     ],
-    url="https://github.com/mcflugen/brie",
+    keywords=["earth science", "coast", "barrier inlet"],
+    url="https://github.com/UNC-CECL/brie",
     license="MIT",
-    install_requires=open("requirements.txt", "r").read().splitlines(),
     packages=find_packages(),
-    cmdclass=versioneer.get_cmdclass(),
 )

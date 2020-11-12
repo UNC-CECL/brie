@@ -1,8 +1,8 @@
+import pkg_resources
+
 from .brie import Brie
 
-
+__version__ = pkg_resources.get_distribution("brie").version
 __all__ = ["Brie"]
 
-from ._version import get_versions
-__version__ = get_versions()['version']
-del get_versions
+del pkg_resources
