@@ -15,20 +15,22 @@ from scipy.io import loadmat
 # load stuff
 ###############################################################################
 
-## python outputs
-#output = np.load('python_grid_testing_inlets_on_full_v4.npz', allow_pickle=True)
-#output = output['output']
-#
-## matlab structures
-#mat = loadmat('matlab_grid_testing_inlets_on_V7pt1_v4_full.mat')
+# python outputs
+output = np.load('CASCADE_comparison.npz', allow_pickle=True)
+output = output['output']
+
+# matlab structures
+mat = loadmat('CASCADE_comparison.mat')
 
 #%%
 ###############################################################################
 # iterate through both outputs and get overwash and inlet flux
 ###############################################################################
  
-param1 = [0.01, 0.02, 0.025, 0.05, 0.08, 0.1, 0.2, 0.25]
-param2 = [1000, 800, 500, 400, 250, 100, 80, 50] 
+#param1 = [0.01, 0.02, 0.025, 0.05, 0.08, 0.1, 0.2, 0.25]
+#param2 = [1000, 800, 500, 400, 250, 100, 80, 50]
+param1 = [0.05, 0.1, 0.25, 0.50, 1]  # yr
+param2 = [1000, 500, 250, 100, 50]#, 10]   # m
 
 inputs_p1 = range(np.size(param1))
 inputs_p2 = range(np.size(param2))
@@ -39,7 +41,7 @@ Qoverwash_total, Qoverwash_mat_total, Qinlet_total, Qinlet_mat_total, F, F_mat, 
             ]
 
 # normalize transgressive sediment flux?
-bnorm = True
+bnorm = False # buggy
 
 for ii in inputs_p1:  
     for jj in inputs_p2 :
@@ -52,8 +54,8 @@ for ii in inputs_p1:
     
         # sum outputs for the same morphologic time (here, calculated as 1,000 years)
         if bnorm :
-            Qoverwash_total[ii,jj] = np.mean(model_out._Qoverwash_norm)
-            Qinlet_total[ii,jj] = np.mean(model_out._Qinlet_norm)
+            Qoverwash_total[ii,jj] = np.mean(model_out._Qoverwash / (model_out._ny * model_out._dy))
+            Qinlet_total[ii,jj] = np.mean(model_out._Qinlet / (model_out._ny * model_out._dy))
         else :
             Qoverwash_total[ii,jj] = np.mean(model_out._Qoverwash)
             Qinlet_total[ii,jj] = np.mean(model_out._Qinlet)
@@ -65,8 +67,10 @@ for ii in inputs_p1:
         
         # get matlab seed parameters
         if bnorm :
-            tmp_Qoverwash_mat = [mat['output'][ii][jj]['Qoverwash_norm'].flat[0]]
-            tmp_Qinlet_mat = [mat['output'][ii][jj]['Qinlet_norm'].flat[0]]
+            tmp_Qoverwash_mat = [mat['output'][ii][jj]['Qoverwash'].flat[0]]
+            tmp_Qinlet_mat = [mat['output'][ii][jj]['Qinlet'].flat[0]]
+            tmp_Qoverwash_mat = tmp_Qoverwash_mat / (model_out._ny * model_out._dy)
+            tmp_Qinlet_mat = tmp_Qinlet_mat / (model_out._ny * model_out._dy)
         else :
             tmp_Qoverwash_mat = [mat['output'][ii][jj]['Qoverwash'].flat[0]]
             tmp_Qinlet_mat = [mat['output'][ii][jj]['Qinlet'].flat[0]]
@@ -82,8 +86,8 @@ for ii in inputs_p1:
         #tmp_inlet_age_mat = [mat['output'][ii][jj]['inlet_age'].flat[0]]    
         #inlet_age_mat[ii,jj] = np.r_[tmp_inlet_age_mat[0]].flatten() 
     
-        Qoverwash_mat_total[ii,jj] = np.mean(tmp_Qoverwash_mat)
-        Qinlet_mat_total[ii,jj] = np.mean(tmp_Qinlet_mat)
+        Qoverwash_mat_total[ii,jj] = np.mean(tmp_Qoverwash_mat[0:int(nt[ii,jj])])
+        Qinlet_mat_total[ii,jj] = np.mean(tmp_Qinlet_mat[0:int(nt[ii,jj])])
         
         F_mat[ii,jj] = ( Qinlet_mat_total[ii,jj] / 
                     (Qinlet_mat_total[ii,jj] + Qoverwash_mat_total[ii,jj] ) )
@@ -123,12 +127,13 @@ plt.jet()
 # Qoverwash
 ax = axs[0,0]
 # in the current setup, [3,5 corresponds to dt = 0.05, dy = 100]
+# CACSCADE setup: [0,3] corresponds to 0.05, 100
 # [5,3] corresponds to dt = 0.1, dy = 400]
-im = ax.pcolormesh(np.transpose(Qoverwash_total/Qoverwash_total[3,5]), edgecolors='white', linewidths=1,
+im = ax.pcolormesh(np.transpose(Qoverwash_total/Qoverwash_total[0,3]), edgecolors='white', linewidths=1,
                    antialiased=True)  #, vmin=0.8,vmax=1.2
 fig.colorbar(im, ax=ax)
 ax.set_title('python - Qoverwash')
-ax.set_xticks(np.arange(len(param2))+0.5) # set ticks in the center of box
+ax.set_xticks(np.arange(len(param1))+0.5) # set ticks in the center of box
 ax.set_yticks(np.arange(len(param2))+0.5)
 ax.set_xticklabels(param1)  # dt
 #ax.set_yticklabels(reversed(param2))
@@ -137,11 +142,11 @@ ax.set_xlabel('dt (yr)')
 ax.set_ylabel('dy (m)')
 
 ax = axs[0,1]
-im = ax.pcolormesh(np.transpose(Qoverwash_mat_total/Qoverwash_mat_total[3,5]), edgecolors='white', linewidths=1,
+im = ax.pcolormesh(np.transpose(Qoverwash_mat_total/Qoverwash_mat_total[0,3]), edgecolors='white', linewidths=1,
                    antialiased=True)
 fig.colorbar(im, ax=ax)
 ax.set_title('matlab - Qoverwash')
-ax.set_xticks(np.arange(len(param2))+0.5) # set ticks in the center of box
+ax.set_xticks(np.arange(len(param1))+0.5) # set ticks in the center of box
 ax.set_yticks(np.arange(len(param2))+0.5)
 ax.set_xticklabels(param1)  # dt
 ax.set_yticklabels(param2)
@@ -150,11 +155,11 @@ ax.set_ylabel('dy (m)')
 
 # Qinlet
 ax = axs[1,0]
-im = ax.pcolormesh(np.transpose(Qinlet_total/Qinlet_total[3,5]), edgecolors='white', linewidths=1,
+im = ax.pcolormesh(np.transpose(Qinlet_total/Qinlet_total[0,3]), edgecolors='white', linewidths=1,
                    antialiased=True)
 fig.colorbar(im, ax=ax)
 ax.set_title('python - Qinlet')
-ax.set_xticks(np.arange(len(param2))+0.5) # set ticks in the center of box
+ax.set_xticks(np.arange(len(param1))+0.5) # set ticks in the center of box
 ax.set_yticks(np.arange(len(param2))+0.5)
 ax.set_xticklabels(param1)  # dt
 ax.set_yticklabels(param2)
@@ -162,11 +167,11 @@ ax.set_xlabel('dt (yr)')
 ax.set_ylabel('dy (m)')
 
 ax = axs[1,1]
-im = ax.pcolormesh(np.transpose(Qinlet_mat_total/Qinlet_mat_total[3,5]), edgecolors='white', linewidths=1,
+im = ax.pcolormesh(np.transpose(Qinlet_mat_total/Qinlet_mat_total[0,3]), edgecolors='white', linewidths=1,
                    antialiased=True)
 fig.colorbar(im, ax=ax)
 ax.set_title('matlab - Qinlet')
-ax.set_xticks(np.arange(len(param2))+0.5) # set ticks in the center of box
+ax.set_xticks(np.arange(len(param1))+0.5) # set ticks in the center of box
 ax.set_yticks(np.arange(len(param2))+0.5)
 ax.set_xticklabels(param1)  # dt
 ax.set_yticklabels(param2)
@@ -294,8 +299,8 @@ im = ax.pcolormesh(Qoverwash_total, edgecolors='white', linewidths=1,
                    antialiased=True)  #, vmin=0.8,vmax=1.2
 fig.colorbar(im, ax=ax)
 ax.set_title('python - Qoverwash')
-ax.set_xticks(np.arange(len(param2))+0.5) # set ticks in the center of box
-ax.set_yticks(np.arange(len(param2))+0.5)
+ax.set_yticks(np.arange(len(param1))+0.5) # set ticks in the center of box
+ax.set_xticks(np.arange(len(param2))+0.5)
 ax.set_xticklabels(param2)  
 ax.set_yticklabels(param1) # dt
 
@@ -304,8 +309,8 @@ im = ax.pcolormesh(Qoverwash_mat_total, edgecolors='white', linewidths=1,
                    antialiased=True)
 fig.colorbar(im, ax=ax)
 ax.set_title('matlab - Qoverwash')
-ax.set_xticks(np.arange(len(param2))+0.5) # set ticks in the center of box
-ax.set_yticks(np.arange(len(param2))+0.5)
+ax.set_yticks(np.arange(len(param1))+0.5) # set ticks in the center of box
+ax.set_xticks(np.arange(len(param2))+0.5)
 ax.set_xticklabels(param2)  
 ax.set_yticklabels(param1) # dt
 ax.set_xlabel('dy (m)')
@@ -316,8 +321,8 @@ im = ax.pcolormesh(Qinlet_total, edgecolors='white', linewidths=1,
                    antialiased=True)
 fig.colorbar(im, ax=ax)
 ax.set_title('python - Qinlet')
-ax.set_xticks(np.arange(len(param2))+0.5) # set ticks in the center of box
-ax.set_yticks(np.arange(len(param2))+0.5)
+ax.set_yticks(np.arange(len(param1))+0.5) # set ticks in the center of box
+ax.set_xticks(np.arange(len(param2))+0.5)
 ax.set_xticklabels(param2)  
 ax.set_yticklabels(param1) # dt
 ax.set_ylabel('dt (yr)')  
@@ -327,8 +332,8 @@ im = ax.pcolormesh(Qinlet_mat_total, edgecolors='white', linewidths=1,
                    antialiased=True)
 fig.colorbar(im, ax=ax)
 ax.set_title('matlab - Qinlet')
-ax.set_xticks(np.arange(len(param2))+0.5) # set ticks in the center of box
-ax.set_yticks(np.arange(len(param2))+0.5)
+ax.set_yticks(np.arange(len(param1))+0.5) # set ticks in the center of box
+ax.set_xticks(np.arange(len(param2))+0.5)
 ax.set_xticklabels(param2)  
 ax.set_yticklabels(param1) # dt
 ax.set_xlabel('dy (m)')
@@ -340,8 +345,8 @@ im = ax.pcolormesh(F, edgecolors='white', linewidths=1,
                    antialiased=True)
 fig.colorbar(im, ax=ax)
 ax.set_title('python - F')
-ax.set_xticks(np.arange(len(param2))+0.5) # set ticks in the center of box
-ax.set_yticks(np.arange(len(param2))+0.5)
+ax.set_yticks(np.arange(len(param1))+0.5) # set ticks in the center of box
+ax.set_xticks(np.arange(len(param2))+0.5)
 ax.set_xticklabels(param2)  
 ax.set_yticklabels(param1) # dt
 
@@ -350,8 +355,8 @@ im = ax.pcolormesh(F_mat, edgecolors='white', linewidths=1,
                    antialiased=True)
 fig.colorbar(im, ax=ax)
 ax.set_title('matlab - F')
-ax.set_xticks(np.arange(len(param2))+0.5) # set ticks in the center of box
-ax.set_yticks(np.arange(len(param2))+0.5)
+ax.set_yticks(np.arange(len(param1))+0.5) # set ticks in the center of box
+ax.set_xticks(np.arange(len(param2))+0.5)
 ax.set_xticklabels(param2)  
 ax.set_yticklabels(param1) # dt
 ax.set_xlabel('dy (m)')     
