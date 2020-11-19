@@ -1,4 +1,6 @@
 import numpy as np
+import scipy.constants
+import yaml
 from numpy.lib.scimath import power as cpower, sqrt as csqrt
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import spsolve
@@ -9,93 +11,211 @@ def inlet_fraction(self, a, b, c, d, I):
     return a + (b / (1 + c * (I ** d)))
 
 
+def calc_alongshore_transport_k(gravity=scipy.constants.g):
+    """Calculate alongshore transport diffusion coefficient.
+
+    The diffusion coefficient is calculated from Nienhuis, Ashton, Giosan, 2015.
+    Note that the Ashton, 2006 value for *k* is incorrect.
+
+    Parameters
+    ----------
+    gravity : float, optional
+        Acceleration due to gravity [m/s^2].
+    """
+    return (
+        5.3e-06
+        * 1050
+        * (gravity ** 1.5)
+        * (0.5 ** 1.2)
+        * (np.sqrt(gravity * 0.78) / (2 * np.pi)) ** 0.2
+    )
+
+
 class Brie:
-    def __init__(self):
+    def __init__(
+        self,
+        barrier_model=True,
+        ast_model=True,
+        inlet_model=True,
+        wave_height=1.0,
+        wave_period=10,
+        wave_asymmetry=0.8,
+        wave_angle_high_fraction=0.2,
+        wave_angle_resolution=1.0,
+        sea_level_rise_rate=2e-3,
+        sea_level_initial=10.0,
+        barrier_width_critical=200.0,
+        barrier_height_critical=2.0,
+        sea_water_density=1025.0,
+        tide_amplitude=0.5,
+        tide_frequency=1.4e-4,
+        back_barrier_marsh_fraction=0.5,
+        back_barrier_depth=3.0,
+        lagoon_manning_n=0.05,
+        shoreface_grain_size=2e-4,
+        xshore_slope=1e-3,
+        alongshore_section_length=100.0,
+        alongshore_section_count=1000,
+        time_step=0.05,
+        time_step_count=100000,
+        inlet_min_spacing=10000.0,
+    ):
+        """The Barrier Inlet Environment model, BRIE.
+
+        Parameters
+        ----------
+        barrier_model: bool, optional
+            If `True`, use overwash and shoreface formulations.
+        ast_model: bool, optional
+            If `True`, turn on the alongshore transport model.
+        inlet_model: bool, optional
+            If `True`, turn on the inlets model.
+        wave_height: float, optional
+            Mean offshore significant wave height [m].
+        wave_period: float, optional
+            Mean wave period [s].
+        wave_asymmetry: float, optional
+            Fraction of waves approaching from left (looking onshore).
+        wave_angle_high_fraction: float, optional
+            Fraction of waves approaching from angles higher than 45 degrees.
+        wave_angle_resolution: float, optional
+            Resolution of possible wave approach angles [deg].
+        sea_level_rise_rate: float, optional
+            Rate of sea_level rise [m/yr].
+        sea_level_initial: float, optional
+            Initial sea level elevation [m]
+        barrier_width_critical: float, optional
+            Critical barrier width [m].
+        barrier_height_critical: float, optional
+            Critical barrier height [m].
+        sea_water_density: float, optional
+            Density of sea water [kg/m^3].
+        tide_amplitude: float, optional
+            Amplitude of tide [m].
+        tide_frequence: float, optional
+            Tidal frequency [rad/s].
+        back_barrier_marsh_fraction: float, optional
+            Percent of backbarrier covered by marsh and therefore does not
+            contribute to tidal prism.
+        back_barrier_depth: float, optional
+            Depth of the back barrier [m].
+        lagoon_manning_n: float, optional
+            Bulk manning n of the lagoon [s m^-(1/3)].
+        shoreface_grain_size: float, optional
+            Median grain size of the shoreface [m].
+        xshore_slope: float, optional
+            Background cross-shore slope (beta) [-].
+        alongshore_section_length: float, optional
+            Length of each alongshore section [m].
+        alongshore_section_count: int, optional
+            Number of alongshore sections.
+        time_step: float, optional
+            Timestep of the numerical model [y].
+        time_step_count: int, optional
+            Number of time steps.
+        inlet_min_spacing: float, optional
+            Minimum inlet spacing [m].
+
+        Examples
+        --------
+        >>> from brie import Brie
+        >>> brie = Brie()
+        """
         # name of output file
         self._name = "ExampleBarrierPlot5"
 
         # which modules to run
-        self._barrier_model_on = True  # overwash and shoreface formulations on or off
-        self._ast_model_on = True  # alongshore transport on or off
-        self._inlet_model_on = True  # inlets on or off
+        self._barrier_model_on = barrier_model
+        self._ast_model_on = ast_model
+        self._inlet_model_on = inlet_model
         self._sedstrat_on = False  # generate stratigraphy at a certain location
         self._bseed = False  # KA: used for testing discretization
         self._b3d_barrier_model_on = False  # KA: added this because I wasn't sure how else to pass the data from B3D
 
         # general parameters
-        self._rho_w = 1025  # density of water [kg/m^3]
-        self._g = 9.81  # gravity [m/s^2]
+        self._rho_w = sea_water_density
+        self._g = scipy.constants.g
 
         ###############################################################################
         # wave climate parameters
         ###############################################################################
 
-        self._wave_height = 1  # mean offshore significant wave height [s]
-        self._wave_period = 10  # mean wave period [m]
-        self._wave_asym = (
-            0.8  # fraction of waves approaching from left (looking onshore)
-        )
-        self._wave_high = (
-            0.2  # " " from angles higher than 45 degrees from shore normal
-        )
+        self._wave_height = wave_height
+        self._wave_period = wave_period
+        self._wave_asym = wave_asymmetry
+        self._wave_high = wave_angle_high_fraction
 
         # alongshore distribution of wave energy
-        self._wave_climl = (
-            180  # resolution of possible wave approach angles (1 per deg)
-        )
-        self._AngArray = np.linspace(-0.5 * np.pi, 0.5 * np.pi, self._wave_climl)
+        self._wave_climl = int(180.0 / wave_angle_resolution)
+        self._angle_array = np.deg2rad(np.linspace(-90.0, 90.0, self._wave_climl))
+
+        # self._wave_climl = (
+        #     180  # resolution of possible wave approach angles (1 per deg)
+        # )
+        # self._angle_array = np.linspace(-0.5 * np.pi, 0.5 * np.pi, self._wave_climl)
 
         # k for alongshore transport, from Nienhuis, Ashton, Giosan 2015 (Ashton 2006
         # value for k is wrong)
-        self._k = (
-            5.3e-06
-            * 1050
-            * (self._g ** 1.5)
-            * (0.5 ** 1.2)
-            * (np.sqrt(self._g * 0.78) / (2 * np.pi)) ** 0.2
-        )
+        self._k = calc_alongshore_transport_k(gravity=self._g)
 
         ###############################################################################
         # barrier model parameters
         ###############################################################################
 
-        self._slr = 2e-03  # sea level rise rate [m/yr]
-        self._s_background = 1e-03  # background cross-shore slope (beta)
-        self._w_b_crit = 200  # critical barrier width [m]
-        self._h_b_crit = 2  # critical barrier height [m]
+        self._slr = sea_level_rise_rate
+        self._s_background = xshore_slope
+        self._w_b_crit = barrier_width_critical
+        self._h_b_crit = barrier_height_critical
         self._Qow_max = 20  # max overwash flux [m3/m/yr]
-        self._z = 10  # initial sea level [m]
-        self._bb_depth = 3  # back barrier depth [m]
-        self._grain_size = 2e-04  # median grain size of the shoreface [m]
+        self._z = sea_level_initial
+        self._bb_depth = back_barrier_depth
+        self._grain_size = shoreface_grain_size
         self._R = 1.65  # relative density of sand
         self._e_s = 0.01  # suspended sediment tranport efficiency factor
         self._c_s = 0.01  # shoreface transport friction factor
 
         # alongshore grid setup
-        self._dy = 100  # length of each alongshore section [m]
-        self._ny = 1000  # number of alonghsore sections
+        self._dy = alongshore_section_length
+        self._ny = alongshore_section_count
 
         # timestepping
-        self._dt = 0.05  # timestep of the numerical model [years]
-        self._nt = 1e5  # number of timesteps
+        self._dt = time_step
+        self._nt = time_step_count
         self._dtsave = 1e3  # save spacing
 
         ###############################################################################
         # inlet model parameters & functions
         ###############################################################################
 
-        self._Jmin = 10000  # minimum inlet spacing [m]
-        self._a0 = 0.5  # amplitude of tide [m]
-        self._omega0 = 1.4e-4  # tidal frequency [rad/s]
+        self._Jmin = inlet_min_spacing
+        self._a0 = tide_amplitude
+        self._omega0 = tide_frequency
         self._inlet_asp = np.sqrt(0.005)  # aspect ratio inlet
-        self._man_n = 0.05  # bulk manning n of the lagoon [sm^-(1/3)]
+        self._man_n = lagoon_manning_n
         self._u_e = 1  # inlet equilibrium velocity [m/s]
         self._inlet_max = 100  # maximum number of inlets (mostly for debugging)
         # % of backbarrier covered by marsh and therefore
         # does not contribute to tidal prism
-        self._marsh_cover = 0.5
+        self._marsh_cover = back_barrier_marsh_fraction
+
+        self.dependent()
+
+    @classmethod
+    def from_yaml(cls, filepath):
+        with open(filepath, "r") as fp:
+            params = yaml.safe_load(fp)
+        return cls(**params)
 
     def dependent(self, wave_angle=None, xs=None):
+        """Set the internal variables that depend on the input parameters.
+
+        Parameters
+        ----------
+        wave_angle: float, optional
+            If provided, the current incoming wave angle [deg].
+        xs: float, optional
+            If provided, the current position of the shoreline [m].
+        """
 
         # KA: I added this function because I need to be able to modify the
         # initialization parameters, of which the variables below are dependent
@@ -207,8 +327,8 @@ class Brie:
             * 365
             * 24
             * self._k
-            * (np.cos(self._AngArray) ** 1.2)
-            * np.sin(self._AngArray)
+            * (np.cos(self._angle_array) ** 1.2)
+            * np.sin(self._angle_array)
         )  # [m3/yr]
         # KA: note first and last points are different here from Matlab version
         self._coast_diff = np.convolve(
@@ -222,8 +342,8 @@ class Brie:
             * 365
             * 24
             * 3600
-            * (np.cos(self._AngArray) ** 0.2)
-            * (1.2 * np.sin(self._AngArray) ** 2 - np.cos(self._AngArray) ** 2),
+            * (np.cos(self._angle_array) ** 0.2)
+            * (1.2 * np.sin(self._angle_array) ** 2 - np.cos(self._angle_array) ** 2),
             mode="same",
         )
         # [m2/yr]
@@ -321,8 +441,8 @@ class Brie:
         )
 
         # KA - added these back after Eric's rewrite because I needed them for testing
-        c_idx = np.uint8(np.zeros((self._ny, 1000)))
-        bar_strat_x = (
+        c_idx = np.uint8(np.zeros((self._ny, 1000)))  # noqa: F841
+        bar_strat_x = (  # noqa: F841
             self._x_b[0] + 1000
         )  # cross-shore location where to record stratigraphy. I guess would be better to do it at one instant in time rather than space?
         self._x_t_save = np.int32(
