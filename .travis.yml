@@ -45,4 +45,4 @@ install:
 script:
 - python -c 'import brie; print(brie.__version__)'
 - pytest -vvv
-- bmi-test --config-file=tests/test_bmi/brie.yaml --root-dir=tests/test_-vvv bmi brie.brie_bmi:BrieBMI
+- bmi-test --config-file=tests/test_bmi/brie.yaml --root-dir=tests/test_bmi -vvv brie.brie_bmi:BrieBMI
