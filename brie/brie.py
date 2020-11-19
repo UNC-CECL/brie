@@ -1,5 +1,5 @@
 import numpy as np
-from numpy.lib.scimath import sqrt as csqrt, power as cpower
+from numpy.lib.scimath import power as cpower, sqrt as csqrt
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import spsolve
 
@@ -48,11 +48,11 @@ class Brie:
         # k for alongshore transport, from Nienhuis, Ashton, Giosan 2015 (Ashton 2006
         # value for k is wrong)
         self._k = (
-                5.3e-06
-                * 1050
-                * (self._g ** 1.5)
-                * (0.5 ** 1.2)
-                * (np.sqrt(self._g * 0.78) / (2 * np.pi)) ** 0.2
+            5.3e-06
+            * 1050
+            * (self._g ** 1.5)
+            * (0.5 ** 1.2)
+            * (np.sqrt(self._g * 0.78) / (2 * np.pi)) ** 0.2
         )
 
         ###############################################################################
@@ -97,7 +97,7 @@ class Brie:
 
     def dependent(self, wave_angle=None, xs=None):
 
-        # KA: I added this function because I need to be able to modify the 
+        # KA: I added this function because I need to be able to modify the
         # initialization parameters, of which the variables below are dependent
 
         self._RNG = np.random.default_rng(seed=1973)
@@ -106,77 +106,119 @@ class Brie:
         # Dependent variables
         ###############################################################################
 
-        self._u_e_star = self._u_e / np.sqrt(self._g * self._a0)  # equilibrium inlet velocity (non-dimensional)
+        self._u_e_star = self._u_e / np.sqrt(
+            self._g * self._a0
+        )  # equilibrium inlet velocity (non-dimensional)
         self._Vd_max = self._w_b_crit * self._h_b_crit  # max deficit volume m3/m
         w_s = (
-                self._R
-                * self._g
-                * self._grain_size ** 2
-                / ((18 * 1e-6) + np.sqrt(0.75 * self._R * self._g * (self._grain_size ** 3)))
+            self._R
+            * self._g
+            * self._grain_size ** 2
+            / (
+                (18 * 1e-6)
+                + np.sqrt(0.75 * self._R * self._g * (self._grain_size ** 3))
+            )
         )  # [m/s] church ferguson 2004
         phi = (
-                16 * self._e_s * self._c_s / (15 * np.pi * self._R * self._g)
+            16 * self._e_s * self._c_s / (15 * np.pi * self._R * self._g)
         )  # phi from aleja/ashton and trueba/ashton
         self._z0 = (
-                2 * self._wave_height / 0.78
+            2 * self._wave_height / 0.78
         )  # minimum depth of integration (very simple approximation of breaking wave depth based on offshore wave height)
         self._d_sf = (
-                8.9 * self._wave_height
+            8.9 * self._wave_height
         )  # 0.018*wave_height*wave_period*sqrt(g/(R*grain_size)); #depth shoreface m #Hallermeier (1983) or  houston (1995)
         self._k_sf = (
-                (3600 * 24 * 365)
-                / (self._d_sf - self._z0)
-                * (
-                        self._g ** (15 / 4)
-                        * self._wave_height ** 5
-                        * phi
-                        * self._wave_period ** (5 / 2)
-                        / (1024 * np.pi ** (5 / 2) * w_s ** 2)
-                        * (4 / 11 * (1 / self._z0 ** (11 / 4) - 1 / (self._d_sf ** (11 / 4))))
-                )
+            (3600 * 24 * 365)
+            / (self._d_sf - self._z0)
+            * (
+                self._g ** (15 / 4)
+                * self._wave_height ** 5
+                * phi
+                * self._wave_period ** (5 / 2)
+                / (1024 * np.pi ** (5 / 2) * w_s ** 2)
+                * (4 / 11 * (1 / self._z0 ** (11 / 4) - 1 / (self._d_sf ** (11 / 4))))
+            )
         )
         self._s_sf_eq = (
-                3
-                * w_s
-                / 4
-                / np.sqrt(self._d_sf * self._g)
-                * (5 + 3 * self._wave_period ** 2 * self._g / 4 / (np.pi ** 2) / self._d_sf)
+            3
+            * w_s
+            / 4
+            / np.sqrt(self._d_sf * self._g)
+            * (5 + 3 * self._wave_period ** 2 * self._g / 4 / (np.pi ** 2) / self._d_sf)
         )
         # equilibrium shoreface slope
         self._wave_cdf = np.cumsum(
             4
             * np.r_[
-                (self._wave_asym * self._wave_high * np.ones((int(self._wave_climl / 4), 1))),
-                (self._wave_asym * (1 - self._wave_high) * np.ones((int(self._wave_climl / 4), 1))),
-                ((1 - self._wave_asym) * (1 - self._wave_high) * np.ones((int(self._wave_climl / 4), 1))),
-                ((1 - self._wave_asym) * self._wave_high * np.ones((int(self._wave_climl / 4), 1))),
+                (
+                    self._wave_asym
+                    * self._wave_high
+                    * np.ones((int(self._wave_climl / 4), 1))
+                ),
+                (
+                    self._wave_asym
+                    * (1 - self._wave_high)
+                    * np.ones((int(self._wave_climl / 4), 1))
+                ),
+                (
+                    (1 - self._wave_asym)
+                    * (1 - self._wave_high)
+                    * np.ones((int(self._wave_climl / 4), 1))
+                ),
+                (
+                    (1 - self._wave_asym)
+                    * self._wave_high
+                    * np.ones((int(self._wave_climl / 4), 1))
+                ),
             ]
             / self._wave_climl
         )
         wave_pdf = np.concatenate(
             4
             * np.r_[
-                (self._wave_asym * self._wave_high * np.ones((int(self._wave_climl / 4), 1))),
-                (self._wave_asym * (1 - self._wave_high) * np.ones((int(self._wave_climl / 4), 1))),
-                ((1 - self._wave_asym) * (1 - self._wave_high) * np.ones((int(self._wave_climl / 4), 1))),
-                ((1 - self._wave_asym) * self._wave_high * np.ones((int(self._wave_climl / 4), 1))),
+                (
+                    self._wave_asym
+                    * self._wave_high
+                    * np.ones((int(self._wave_climl / 4), 1))
+                ),
+                (
+                    self._wave_asym
+                    * (1 - self._wave_high)
+                    * np.ones((int(self._wave_climl / 4), 1))
+                ),
+                (
+                    (1 - self._wave_asym)
+                    * (1 - self._wave_high)
+                    * np.ones((int(self._wave_climl / 4), 1))
+                ),
+                (
+                    (1 - self._wave_asym)
+                    * self._wave_high
+                    * np.ones((int(self._wave_climl / 4), 1))
+                ),
             ]
             / self._wave_climl
         )
         self._coast_qs = (
-                self._wave_height ** 2.4
-                * (self._wave_period ** 0.2)
-                * 3600
-                * 365
-                * 24
-                * self._k
-                * (np.cos(self._AngArray) ** 1.2)
-                * np.sin(self._AngArray)
+            self._wave_height ** 2.4
+            * (self._wave_period ** 0.2)
+            * 3600
+            * 365
+            * 24
+            * self._k
+            * (np.cos(self._AngArray) ** 1.2)
+            * np.sin(self._AngArray)
         )  # [m3/yr]
         # KA: note first and last points are different here from Matlab version
         self._coast_diff = np.convolve(
             wave_pdf,
-            -(self._k / (self._h_b_crit + self._d_sf) * self._wave_height ** 2.4 * self._wave_period ** 0.2)
+            -(
+                self._k
+                / (self._h_b_crit + self._d_sf)
+                * self._wave_height ** 2.4
+                * self._wave_period ** 0.2
+            )
             * 365
             * 24
             * 3600
@@ -188,12 +230,24 @@ class Brie:
 
         # timestepping implicit diffusion equation (KA: -1 for python indexing)
         self._di = (
-                np.r_[self._ny, np.arange(2, self._ny + 1), np.arange(1, self._ny + 1), np.arange(1, self._ny), 1]
-                - 1
+            np.r_[
+                self._ny,
+                np.arange(2, self._ny + 1),
+                np.arange(1, self._ny + 1),
+                np.arange(1, self._ny),
+                1,
+            ]
+            - 1
         )
         self._dj = (
-                np.r_[1, np.arange(1, self._ny), np.arange(1, self._ny + 1), np.arange(2, self._ny + 1), self._ny]
-                - 1
+            np.r_[
+                1,
+                np.arange(1, self._ny),
+                np.arange(1, self._ny + 1),
+                np.arange(2, self._ny + 1),
+                self._ny,
+            ]
+            - 1
         )
 
         ###############################################################################
@@ -201,7 +255,9 @@ class Brie:
         ###############################################################################
 
         self._time_index = 1
-        self._x_t = (self._z - self._d_sf) / self._s_background + np.zeros(self._ny)  # position shoreface toe [m]
+        self._x_t = (self._z - self._d_sf) / self._s_background + np.zeros(
+            self._ny
+        )  # position shoreface toe [m]
 
         # KA - used for seeding, testing discretization
         if self._bseed:
@@ -210,47 +266,88 @@ class Brie:
             self._x_s = xs
             self._wave_angle = wave_angle
         else:
-            self._x_s = self._RNG.random(self._ny) + self._d_sf / self._s_sf_eq + self._x_t  # position shoreline [m]
+            self._x_s = (
+                self._RNG.random(self._ny) + self._d_sf / self._s_sf_eq + self._x_t
+            )  # position shoreline [m]
             # self._x_s = np.random.rand(self._ny) + self._d_sf / self._s_sf_eq + self._x_t  # position shoreline [m]
 
-        self._x_b = self._d_sf / self._s_sf_eq + self._w_b_crit + self._x_t  # position back barrier [m]
+        self._x_b = (
+            self._d_sf / self._s_sf_eq + self._w_b_crit + self._x_t
+        )  # position back barrier [m]
         self._h_b = 2 + np.zeros(self._ny)  # height barrier [m]
         self._barrier_volume = np.array([])
         self._inlet_idx_close_mat = np.array([])
-        self._inlet_idx = ([])  # KA: originally a matlab cell, here a list that is appended after first time step
-        self._inlet_idx_mat = np.array([]).astype(float)  # KA: we use this variable for NaN operations
+        self._inlet_idx = (
+            []
+        )  # KA: originally a matlab cell, here a list that is appended after first time step
+        self._inlet_idx_mat = np.array([]).astype(
+            float
+        )  # KA: we use this variable for NaN operations
         self._inlet_y = np.zeros(self._ny)
-        self._y = np.arange(100, self._dy * self._ny, self._dy)  # alongshore array [KA: just used for plotting]
+        self._y = np.arange(
+            100, self._dy * self._ny, self._dy
+        )  # alongshore array [KA: just used for plotting]
 
         # variables used for saving data [KA: changed all self.dt to self._dt]
-        self._t = np.arange(self._dt, (self._dt * self._nt) + self._dt, self._dt)  # time array
+        self._t = np.arange(
+            self._dt, (self._dt * self._nt) + self._dt, self._dt
+        )  # time array
         self._Qoverwash = np.float32(np.zeros(int(self._nt)))
         self._Qinlet = np.float32(np.zeros(int(self._nt)))
         self._inlet_age = []
         # KA: changed the saving arrays from matlab version to enable saving every time step in python, e.g., now if I
         # use the default dtsave=1000, the first value in these arrays (i.e., [0]) are the initial conditions and the
         # second value (i.e., [1]) is the first saving index at time_step=1000
-        self._inlet_nr = np.uint16(np.zeros(np.size(np.arange(0, self._nt, self._dtsave))))
-        self._inlet_migr = np.int16(np.zeros(np.size(np.arange(0, self._nt, self._dtsave))))
-        self._inlet_Qs_in = np.float32(np.zeros(np.size(np.arange(0, self._nt, self._dtsave))))
-        self._inlet_alpha = np.float32(np.zeros(np.size(np.arange(0, self._nt, self._dtsave))))
-        self._inlet_beta = np.float32(np.zeros(np.size(np.arange(0, self._nt, self._dtsave))))
-        self._inlet_delta = np.float32(np.zeros(np.size(np.arange(0, self._nt, self._dtsave))))
-        self._inlet_ai = np.int32(np.zeros(np.size(np.arange(0, self._nt, self._dtsave))))
+        self._inlet_nr = np.uint16(
+            np.zeros(np.size(np.arange(0, self._nt, self._dtsave)))
+        )
+        self._inlet_migr = np.int16(
+            np.zeros(np.size(np.arange(0, self._nt, self._dtsave)))
+        )
+        self._inlet_Qs_in = np.float32(
+            np.zeros(np.size(np.arange(0, self._nt, self._dtsave)))
+        )
+        self._inlet_alpha = np.float32(
+            np.zeros(np.size(np.arange(0, self._nt, self._dtsave)))
+        )
+        self._inlet_beta = np.float32(
+            np.zeros(np.size(np.arange(0, self._nt, self._dtsave)))
+        )
+        self._inlet_delta = np.float32(
+            np.zeros(np.size(np.arange(0, self._nt, self._dtsave)))
+        )
+        self._inlet_ai = np.int32(
+            np.zeros(np.size(np.arange(0, self._nt, self._dtsave)))
+        )
 
         # KA - added these back after Eric's rewrite because I needed them for testing
         c_idx = np.uint8(np.zeros((self._ny, 1000)))
-        bar_strat_x = self._x_b[
-                          0] + 1000  # cross-shore location where to record stratigraphy. I guess would be better to do it at one instant in time rather than space?
-        self._x_t_save = np.int32(np.zeros((self._ny, np.size(np.arange(0, self._nt, self._dtsave)))))
-        self._x_t_save[:, 0] = self._x_t  # KA: for some reason this rounds down to 1099 and not up to 1100...why?
-        self._x_s_save = np.int32(np.zeros((self._ny, np.size(np.arange(0, self._nt, self._dtsave)))))
+        bar_strat_x = (
+            self._x_b[0] + 1000
+        )  # cross-shore location where to record stratigraphy. I guess would be better to do it at one instant in time rather than space?
+        self._x_t_save = np.int32(
+            np.zeros((self._ny, np.size(np.arange(0, self._nt, self._dtsave))))
+        )
+        self._x_t_save[
+            :, 0
+        ] = (
+            self._x_t
+        )  # KA: for some reason this rounds down to 1099 and not up to 1100...why?
+        self._x_s_save = np.int32(
+            np.zeros((self._ny, np.size(np.arange(0, self._nt, self._dtsave))))
+        )
         self._x_s_save[:, 0] = self._x_s
-        self._x_b_save = np.int32(np.zeros((self._ny, np.size(np.arange(0, self._nt, self._dtsave)))))
+        self._x_b_save = np.int32(
+            np.zeros((self._ny, np.size(np.arange(0, self._nt, self._dtsave))))
+        )
         self._x_b_save[:, 0] = self._x_b
-        self._h_b_save = np.float32(np.zeros((self._ny, np.size(np.arange(0, self._nt, self._dtsave)))))
+        self._h_b_save = np.float32(
+            np.zeros((self._ny, np.size(np.arange(0, self._nt, self._dtsave))))
+        )
         self._h_b_save[:, 0] = self._h_b
-        self._s_sf_save = np.float32(np.zeros((self._ny, np.size(np.arange(0, self._nt, self._dtsave)))))
+        self._s_sf_save = np.float32(
+            np.zeros((self._ny, np.size(np.arange(0, self._nt, self._dtsave))))
+        )
         self._s_sf_save[:, 0] = self._s_sf_eq
 
         # initialize empty arrays for barrier model (added by KA for coupling)
@@ -306,8 +403,8 @@ class Brie:
             / 2.0
             * np.sqrt(a_star)
             * (
-                    (-gam * np.sqrt(a_star) * ((a_star - ah_star) ** 2))
-                    + np.sqrt((gam ** 2) * a_star * ((a_star - ah_star) ** 4) + 4)
+                (-gam * np.sqrt(a_star) * ((a_star - ah_star) ** 2))
+                + np.sqrt((gam ** 2) * a_star * ((a_star - ah_star) ** 4) + 4)
             )
         )
 
@@ -316,65 +413,65 @@ class Brie:
         return np.real(
             (2 * ah_star) / 3
             + (
-                    2 ** (2 / 3)
-                    * cpower(
-                (
+                2 ** (2 / 3)
+                * cpower(
+                    (
                         (
-                                18 * ah_star * gam ** 2
-                                - 27 * u_e_star ** 4
-                                - 2 * ah_star ** 3 * gam ** 2 * u_e_star ** 2
-                                + 3
-                                * 3 ** (1 / 2)
-                                * gam ** 2
-                                * u_e_star ** 2
-                                * csqrt(
-                            -(
+                            18 * ah_star * gam ** 2
+                            - 27 * u_e_star ** 4
+                            - 2 * ah_star ** 3 * gam ** 2 * u_e_star ** 2
+                            + 3
+                            * 3 ** (1 / 2)
+                            * gam ** 2
+                            * u_e_star ** 2
+                            * csqrt(
+                                -(
                                     4 * ah_star ** 4 * gam ** 4 * u_e_star ** 4
                                     - 4 * ah_star ** 3 * gam ** 2 * u_e_star ** 8
                                     - 8 * ah_star ** 2 * gam ** 4 * u_e_star ** 2
                                     + 36 * ah_star * gam ** 2 * u_e_star ** 6
                                     + 4 * gam ** 4
                                     - 27 * u_e_star ** 10
+                                )
+                                / (gam ** 4 * u_e_star ** 6)
                             )
-                            / (gam ** 4 * u_e_star ** 6)
-                        )
                         )
                         / (gam ** 2 * u_e_star ** 2)
-                ),
-                1 / 3,
-            )
+                    ),
+                    1 / 3,
+                )
             )
             / 6
             + (2 ** (1 / 3) * (ah_star ** 2 * u_e_star ** 2 + 3))
             / (
-                    3
-                    * u_e_star ** 2
-                    * cpower(
-                (
+                3
+                * u_e_star ** 2
+                * cpower(
+                    (
                         (
-                                18 * ah_star * gam ** 2
-                                - 27 * u_e_star ** 4
-                                - 2 * ah_star ** 3 * gam ** 2 * u_e_star ** 2
-                                + 3
-                                * 3 ** (1 / 2)
-                                * gam ** 2
-                                * u_e_star ** 2
-                                * csqrt(
-                            -(
+                            18 * ah_star * gam ** 2
+                            - 27 * u_e_star ** 4
+                            - 2 * ah_star ** 3 * gam ** 2 * u_e_star ** 2
+                            + 3
+                            * 3 ** (1 / 2)
+                            * gam ** 2
+                            * u_e_star ** 2
+                            * csqrt(
+                                -(
                                     4 * ah_star ** 4 * gam ** 4 * u_e_star ** 4
                                     - 4 * ah_star ** 3 * gam ** 2 * u_e_star ** 8
                                     - 8 * ah_star ** 2 * gam ** 4 * u_e_star ** 2
                                     + 36 * ah_star * gam ** 2 * u_e_star ** 6
                                     + 4 * gam ** 4
                                     - 27 * u_e_star ** 10
+                                )
+                                / (gam ** 4 * u_e_star ** 6)
                             )
-                            / (gam ** 4 * u_e_star ** 6)
-                        )
                         )
                         / (gam ** 2 * u_e_star ** 2)
-                ),
-                1 / 3,
-            )
+                    ),
+                    1 / 3,
+                )
             )
         )
 
@@ -387,7 +484,8 @@ class Brie:
         self._z = self._z + (self._dt * self._slr)  # height of sea level
         w = self._x_b - self._x_s  # barrier width
         d_b = np.minimum(
-            self._bb_depth * np.ones(np.size(self._x_b)), self._z - (self._s_background * self._x_b)
+            self._bb_depth * np.ones(np.size(self._x_b)),
+            self._z - (self._s_background * self._x_b),
         )  # basin depth
         s_sf = self._d_sf / (self._x_s - self._x_t)  # shoreface slope
 
@@ -413,20 +511,27 @@ class Brie:
 
             # changes
             ff = (self._z - self._s_background * self._x_b - d_b) / (
-                    self._z - self._s_background * self._x_b + self._h_b)
-            self._x_t_dt = (4 * Qsf * (self._h_b + self._d_sf) / (self._d_sf * (2 * self._h_b + self._d_sf))) + (
-                    2 * self._dt * self._slr / s_sf
+                self._z - self._s_background * self._x_b + self._h_b
             )
+            self._x_t_dt = (
+                4
+                * Qsf
+                * (self._h_b + self._d_sf)
+                / (self._d_sf * (2 * self._h_b + self._d_sf))
+            ) + (2 * self._dt * self._slr / s_sf)
             self._x_s_dt = 2 * Qow / ((2 * self._h_b) + self._d_sf) / (1 - ff) - (
-                    4 * Qsf * (self._h_b + self._d_sf) / (((2 * self._h_b) + self._d_sf) ** 2)
+                4
+                * Qsf
+                * (self._h_b + self._d_sf)
+                / (((2 * self._h_b) + self._d_sf) ** 2)
             )
             self._x_b_dt = Qow_b / (self._h_b + d_b)
             self._h_b_dt = (Qow_h / w) - (self._dt * self._slr)
 
-            # how much q overwash w in total [m3/yr] 
+            # how much q overwash w in total [m3/yr]
             self._Qoverwash[self._time_index - 1] = np.sum(self._dy * Qow_b / self._dt)
 
-        elif (self._b3d_barrier_model_on):
+        elif self._b3d_barrier_model_on:
             # do nothing, x_t_dt, x_s_dt, x_b_dt, and h_b_dt all come from Barrier3d (is there a better way to do this?)
             self._x_t_dt = self._x_t_dt
             self._x_s_dt = self._x_s_dt
@@ -440,11 +545,19 @@ class Brie:
             self._h_b_dt = np.zeros(self._ny)
 
         if (
-                self._ast_model_on
+            self._ast_model_on
         ):  # only alongshore transport calculation to estimate flux into inlets
 
             # simple conv approach - KA: example of first row appended to the end
-            theta = 180 * (np.arctan2((self._x_s[np.r_[1: len(self._x_s), 0]] - self._x_s), self._dy)) / np.pi
+            theta = (
+                180
+                * (
+                    np.arctan2(
+                        (self._x_s[np.r_[1 : len(self._x_s), 0]] - self._x_s), self._dy
+                    )
+                )
+                / np.pi
+            )
 
             # wave direction
             if self._bseed:
@@ -458,19 +571,22 @@ class Brie:
 
             # sed transport this timestep (KA: NOTE, -1 indexing is for Python)
             Qs = (
-                    self._dt
-                    * self._coast_qs[
-                        np.minimum(
-                            self._wave_climl,
-                            np.maximum(
-                                1,
-                                np.round(
-                                    self._wave_climl - wave_ang - (self._wave_climl / 180 * theta) + 1
-                                ),
+                self._dt
+                * self._coast_qs[
+                    np.minimum(
+                        self._wave_climl,
+                        np.maximum(
+                            1,
+                            np.round(
+                                self._wave_climl
+                                - wave_ang
+                                - (self._wave_climl / 180 * theta)
+                                + 1
                             ),
-                        ).astype(int)
-                        - 1
-                        ]
+                        ),
+                    ).astype(int)
+                    - 1
+                ]
             ).astype(float)
 
         if self._inlet_model_on:
@@ -480,11 +596,13 @@ class Brie:
 
             # KA, note this was originally empty
             # barrier volume is barrier width times height + estimated inlet depth
-            self._barrier_volume = w * (self._h_b + 2) * np.sign(np.minimum(w, self._h_b))
+            self._barrier_volume = (
+                w * (self._h_b + 2) * np.sign(np.minimum(w, self._h_b))
+            )
 
             # KA: added if statement here because error thrown for empty list
             if (
-                    np.size(self._inlet_idx) != 0
+                np.size(self._inlet_idx) != 0
             ):  # KA: inlet_idx is a list here with arrays of different size (from previous time loop)
                 self._barrier_volume[np.hstack(self._inlet_idx)] = np.inf
 
@@ -492,8 +610,10 @@ class Brie:
                 self._inlet_idx.append(np.nonzero(self._barrier_volume < 0)[0])
 
             # storm for new inlet every 10 year
-            if np.mod(self._t[self._time_index - 1], 10) < (self._dt / 2) and np.size(
-                    self._inlet_idx) < self._inlet_max:
+            if (
+                np.mod(self._t[self._time_index - 1], 10) < (self._dt / 2)
+                and np.size(self._inlet_idx) < self._inlet_max
+            ):
 
                 # potential basin length
                 if np.size(self._inlet_idx) == 0:
@@ -508,8 +628,11 @@ class Brie:
                     # but note that it appears that Lmin/2 is applied in each direction
                     basin_length = np.ravel(
                         (
-                                np.array(([-self._ny, 0, self._ny]))
-                                + np.reshape(self._inlet_idx_mat + 1, (np.size(self._inlet_idx_mat), 1))
+                            np.array(([-self._ny, 0, self._ny]))
+                            + np.reshape(
+                                self._inlet_idx_mat + 1,
+                                (np.size(self._inlet_idx_mat), 1),
+                            )
                         ).T
                     )
                     basin_length = np.amin(
@@ -526,7 +649,9 @@ class Brie:
                     )
 
                 # basin width is simpler (cross-barrier basin width [m])
-                self._basin_width = np.maximum(0, self._z / self._s_background - self._x_b)
+                self._basin_width = np.maximum(
+                    0, self._z / self._s_background - self._x_b
+                )
 
                 # find new inlets only if its far enough away from existing inlets
                 # KA: i.e., find the instances of Jmin
@@ -559,11 +684,14 @@ class Brie:
                 self._inlet_idx_mat[
                     inlet_all_idx_idx[
                         np.less_equal(
-                            np.diff(np.r_[inlet_all_idx[-1] - self._ny, inlet_all_idx]), 1
+                            np.diff(np.r_[inlet_all_idx[-1] - self._ny, inlet_all_idx]),
+                            1,
                         )
                     ]
                 ] = np.nan
-                self._inlet_idx_mat = self._inlet_idx_mat[~np.isnan(self._inlet_idx_mat)]
+                self._inlet_idx_mat = self._inlet_idx_mat[
+                    ~np.isnan(self._inlet_idx_mat)
+                ]
                 # KA: here, inlet_idx is reduced to just the first index (still a list)
                 self._inlet_idx = self._inlet_idx_mat.astype(int).tolist()
 
@@ -574,26 +702,36 @@ class Brie:
                 inlet_all_idx = np.sort(self._inlet_idx)
                 inlet_all_idx_idx = np.argsort(self._inlet_idx)
                 inlet_dist = np.diff(
-                    np.r_[inlet_all_idx[-1] - self._ny, inlet_all_idx, inlet_all_idx[0] + self._ny]
+                    np.r_[
+                        inlet_all_idx[-1] - self._ny,
+                        inlet_all_idx,
+                        inlet_all_idx[0] + self._ny,
+                    ]
                 )  # KA: distance between inlets
                 basin_length = np.minimum(
                     self._Jmin,
-                    (self._dy * 0.5 * (inlet_dist[0:-1] + inlet_dist[1: len(inlet_dist)])),
+                    (
+                        self._dy
+                        * 0.5
+                        * (inlet_dist[0:-1] + inlet_dist[1 : len(inlet_dist)])
+                    ),
                 )
 
                 # see swart zimmerman
-                ah_star = self._omega0 * w[self._inlet_idx] / np.sqrt(self._g * self._a0)
+                ah_star = (
+                    self._omega0 * w[self._inlet_idx] / np.sqrt(self._g * self._a0)
+                )
                 c_d = self._g * self._man_n ** 2 / (d_b[self._inlet_idx] ** (1 / 3))
                 gam = np.maximum(
                     1e-3,
                     self._inlet_asp
                     * (
-                            (self._omega0 ** 2)
-                            * (1 - self._marsh_cover) ** 2
-                            * (basin_length[inlet_all_idx_idx] ** 2)
-                            * (self._basin_width[self._inlet_idx] ** 2)
-                            * self._a0
-                            / self._g
+                        (self._omega0 ** 2)
+                        * (1 - self._marsh_cover) ** 2
+                        * (basin_length[inlet_all_idx_idx] ** 2)
+                        * (self._basin_width[self._inlet_idx] ** 2)
+                        * self._a0
+                        / self._g
                     )
                     ** (1 / 4)
                     / ((8 / 3 / np.pi) * c_d * w[self._inlet_idx]),
@@ -601,12 +739,12 @@ class Brie:
                 a_star_eq = self.a_star_eq_fun(ah_star, gam, self._u_e_star)
                 u_eq = np.real(self.u(a_star_eq, gam, ah_star))
                 ai_eq = (
-                                self._omega0
-                                * (1 - self._marsh_cover)
-                                * basin_length[inlet_all_idx_idx]
-                                * self._basin_width[self._inlet_idx]
-                                * np.sqrt(self._a0 / self._g)
-                        ) * a_star_eq  # KA: does it matter that this was last defined during the Tstorm year?
+                    self._omega0
+                    * (1 - self._marsh_cover)
+                    * basin_length[inlet_all_idx_idx]
+                    * self._basin_width[self._inlet_idx]
+                    * np.sqrt(self._a0 / self._g)
+                ) * a_star_eq  # KA: does it matter that this was last defined during the Tstorm year?
 
                 # keep inlet open if velocity is at equilibrium (Escoffier); add
                 # margin of 0.05 m/s for rounding errors etc
@@ -616,11 +754,15 @@ class Brie:
                 )
 
                 # we don't have to think about this one every again!
-                self._inlet_idx_mat[inlet_close] = np.nan  # KA: use inlet_idx_mat b/c float
+                self._inlet_idx_mat[
+                    inlet_close
+                ] = np.nan  # KA: use inlet_idx_mat b/c float
                 self._inlet_idx_close_mat = np.argwhere(
                     np.isnan(self._inlet_idx_mat)
                 )  # KA: get index
-                self._inlet_idx_mat = self._inlet_idx_mat[~np.isnan(self._inlet_idx_mat)]
+                self._inlet_idx_mat = self._inlet_idx_mat[
+                    ~np.isnan(self._inlet_idx_mat)
+                ]
                 # KA: again here, inlet_idx is just the first index (still a list), and not sorted
                 self._inlet_idx = self._inlet_idx_mat.astype(int).tolist()
                 ai_eq[inlet_close] = np.nan
@@ -628,7 +770,9 @@ class Brie:
 
                 wi_eq = np.sqrt(ai_eq) / self._inlet_asp  # calculate width and depths
                 di_eq = ai_eq / wi_eq
-                wi_cell = np.ceil(wi_eq / self._dy).astype(int)  # get cell widths per inlet
+                wi_cell = np.ceil(wi_eq / self._dy).astype(
+                    int
+                )  # get cell widths per inlet
 
             # KA: python object arrays to "mimic" Matlab cells for inlet tracking
             # in retrospect, probably didn't need objects. Empty list would have been fine.
@@ -645,24 +789,27 @@ class Brie:
 
                 # breach sediment is added to the flood-tidal delta
                 if (
-                        self._new_inlet.size > 0 and self._inlet_idx[j - 1] == self._new_inlet
+                    self._new_inlet.size > 0
+                    and self._inlet_idx[j - 1] == self._new_inlet
                 ):  # KA: for python, need to check that the array isn't empty
                     # KA: here, Jaap allows the indexing to wrap such that a new
                     # inlet formed at the end of the model domain can deposit sediment
                     # at the start of the model domain; does this wrapping for all
                     # inlet dynamics (see other np.mods throughout code)
                     new_inlet_idx = np.mod(
-                        self._new_inlet + np.r_[1: (wi_cell[j - 1] + 1)] - 1, self._ny
+                        self._new_inlet + np.r_[1 : (wi_cell[j - 1] + 1)] - 1, self._ny
                     )
                     x_b_fld_dt[new_inlet_idx] = x_b_fld_dt[new_inlet_idx] + (
-                            (self._h_b[self._new_inlet] + di_eq[j - 1]) * w[self._new_inlet]
+                        (self._h_b[self._new_inlet] + di_eq[j - 1]) * w[self._new_inlet]
                     ) / (d_b[self._new_inlet])
 
-                    self._Qinlet[self._time_index - 1] = self._Qinlet[self._time_index - 1] + (
-                            (self._h_b[self._new_inlet] + d_b[self._new_inlet])
-                            * w[self._new_inlet]
-                            * wi_cell[j - 1]
-                            * self._dy
+                    self._Qinlet[self._time_index - 1] = self._Qinlet[
+                        self._time_index - 1
+                    ] + (
+                        (self._h_b[self._new_inlet] + d_b[self._new_inlet])
+                        * w[self._new_inlet]
+                        * wi_cell[j - 1]
+                        * self._dy
                     )
 
                 # alongshore flux brought into inlet
@@ -672,7 +819,8 @@ class Brie:
                 # KA: here, inlet_idx becomes a list of arrays, and again,
                 # inlets wrap around the edges
                 self._inlet_idx[j - 1] = np.mod(
-                    self._inlet_idx[j - 1] + np.r_[1: (wi_cell[j - 1] + 1)] - 1, self._ny
+                    self._inlet_idx[j - 1] + np.r_[1 : (wi_cell[j - 1] + 1)] - 1,
+                    self._ny,
                 ).astype(int)
                 inlet_nex[j - 1] = np.mod(self._inlet_idx[j - 1][-1] + 1, self._ny)
                 inlet_prv[j - 1] = np.mod(self._inlet_idx[j - 1][0] - 1, self._ny)
@@ -685,14 +833,22 @@ class Brie:
                 self._h_b[self._inlet_idx[j - 1]] = 0
 
                 # constrain to not widen
-                Ab_prv = w[inlet_prv[j - 1]] * (self._h_b[self._inlet_idx[j - 1][0]] + di_eq[j - 1])
-                Ab_nex = w[inlet_nex[j - 1]] * (self._h_b[inlet_nex[j - 1]] + di_eq[j - 1])
+                Ab_prv = w[inlet_prv[j - 1]] * (
+                    self._h_b[self._inlet_idx[j - 1][0]] + di_eq[j - 1]
+                )
+                Ab_nex = w[inlet_nex[j - 1]] * (
+                    self._h_b[inlet_nex[j - 1]] + di_eq[j - 1]
+                )
 
                 # do fld delta eq volume
                 Vfld = (
-                        (self._x_b[self._inlet_idx[j - 1][0]] - self._x_s[self._inlet_idx[j - 1][0]] + self._w_b_crit)
-                        * wi_eq[j - 1]
-                        * d_b[self._inlet_idx[j - 1][0]]
+                    (
+                        self._x_b[self._inlet_idx[j - 1][0]]
+                        - self._x_s[self._inlet_idx[j - 1][0]]
+                        + self._w_b_crit
+                    )
+                    * wi_eq[j - 1]
+                    * d_b[self._inlet_idx[j - 1][0]]
                 )
                 Vfld_max = 1e4 * (self._u_e * ai_eq[j - 1] / 2 / self._omega0) ** 0.37
 
@@ -731,22 +887,24 @@ class Brie:
                     delta_r[j - 1] = 0
                 else:
                     delta_r[j - 1] = (
-                                             (Ab_nex * alpha[j - 1]) - (Ab_prv * beta_r[j - 1])
-                                     ) / Ab_prv
+                        (Ab_nex * alpha[j - 1]) - (Ab_prv * beta_r[j - 1])
+                    ) / Ab_prv
 
                 # use fractions to physically move inlets and fld-tidal detlas
 
                 # update fld delta, deposit sediment at 0 water depth
                 fld_delta = np.abs(Qs_in[j - 1]) * (
-                        delta[j - 1] + delta_r[j - 1]
+                    delta[j - 1] + delta_r[j - 1]
                 )  # KA: this seems low for my QC scenario, maybe come back to this
                 # remove sediment from the shoreface
                 inlet_sink = np.abs(Qs_in[j - 1]) * (1 - beta[j - 1] - beta_r[j - 1])
                 # spread fld tidal delta along one more cell alongshore in both directions
-                temp_idx = np.r_[inlet_prv[j - 1], self._inlet_idx[j - 1], inlet_nex[j - 1]]
+                temp_idx = np.r_[
+                    inlet_prv[j - 1], self._inlet_idx[j - 1], inlet_nex[j - 1]
+                ]
 
                 x_b_fld_dt[temp_idx] = x_b_fld_dt[temp_idx] + fld_delta / (
-                        np.size(temp_idx) * self._dy
+                    np.size(temp_idx) * self._dy
                 ) / (self._h_b[temp_idx] + d_b[temp_idx])
 
                 # migrate inlet indices (in m/dt)
@@ -760,7 +918,7 @@ class Brie:
                 # calculate where in the grid cell the inlet is, and add the
                 # fractional migration to it
                 self._inlet_y[self._inlet_idx[j - 1][0]] = (
-                        self._inlet_y[self._inlet_idx[j - 1][0]] + migr_up[j - 1] / self._dy
+                    self._inlet_y[self._inlet_idx[j - 1][0]] + migr_up[j - 1] / self._dy
                 )
 
                 # how far are the inlets in their gridcell?
@@ -774,12 +932,16 @@ class Brie:
                 self._inlet_y[self._inlet_idx[j - 1][0]] = 0
 
                 # move inlet in gridcell
-                self._inlet_idx[j - 1] = np.mod(self._inlet_idx[j - 1] + migr_int, self._ny).astype(int)
+                self._inlet_idx[j - 1] = np.mod(
+                    self._inlet_idx[j - 1] + migr_int, self._ny
+                ).astype(int)
 
                 self._inlet_y[self._inlet_idx[j - 1][0]] = migr_res
 
                 # how much q flood tidal delta in total
-                self._Qinlet[self._time_index - 1] = self._Qinlet[self._time_index - 1] + inlet_sink  # m3 per time step
+                self._Qinlet[self._time_index - 1] = (
+                    self._Qinlet[self._time_index - 1] + inlet_sink
+                )  # m3 per time step
 
                 # add inlet sink to shoreline change (updated May 27, 2020 so that shoreline change from inlet sink
                 # now spread out along width of inlet +1 cell in both directions)
@@ -788,35 +950,54 @@ class Brie:
                 #         + inlet_sink / (self._h_b[inlet_nex[j - 1]] + self._d_sf) / self._dy
                 # )
                 self._x_s_dt[temp_idx] = (
-                        self._x_s_dt[temp_idx]
-                        + inlet_sink / (self._h_b[temp_idx] + self._d_sf)
-                        / len(temp_idx) / self._dy
+                    self._x_s_dt[temp_idx]
+                    + inlet_sink
+                    / (self._h_b[temp_idx] + self._d_sf)
+                    / len(temp_idx)
+                    / self._dy
                 )
 
                 # inlet age
                 # fancy lightweight way to keep track of where inlets are in the model
                 # KA: note that this differs from matlab version, here we do this all
                 # in the for loop
-                self._inlet_age.append([self._time_index, self._inlet_idx[j - 1][0].astype("int32")])
+                self._inlet_age.append(
+                    [self._time_index, self._inlet_idx[j - 1][0].astype("int32")]
+                )
 
             # reset arrays
             self._new_inlet = np.array([])
 
             # inlet statistics
-            if np.mod(self._time_index,
-                      self._dtsave) == 0:  # KA: modified this from matlab version so that I can save every time step in python
+            if (
+                np.mod(self._time_index, self._dtsave) == 0
+            ):  # KA: modified this from matlab version so that I can save every time step in python
                 # skip first time step (initial condition)
-                self._inlet_nr[np.fix(self._time_index / self._dtsave).astype(int) - 1] = len(
+                self._inlet_nr[
+                    np.fix(self._time_index / self._dtsave).astype(int) - 1
+                ] = len(
                     self._inlet_idx
                 )  # number of inlets
-                self._inlet_migr[np.fix(self._time_index / self._dtsave).astype(int) - 1] = np.mean(migr_up / self._dt)
+                self._inlet_migr[
+                    np.fix(self._time_index / self._dtsave).astype(int) - 1
+                ] = np.mean(migr_up / self._dt)
 
                 if np.size(self._inlet_idx) != 0:
-                    self._inlet_Qs_in[np.fix(self._time_index / self._dtsave).astype(int) - 1] = np.mean(Qs_in)
-                    self._inlet_alpha[np.fix(self._time_index / self._dtsave).astype(int) - 1] = np.mean(alpha)
-                    self._inlet_beta[np.fix(self._time_index / self._dtsave).astype(int) - 1] = np.mean(beta)
-                    self._inlet_delta[np.fix(self._time_index / self._dtsave).astype(int) - 1] = np.mean(delta)
-                    self._inlet_ai[np.fix(self._time_index / self._dtsave).astype(int) - 1] = np.mean(ai_eq)
+                    self._inlet_Qs_in[
+                        np.fix(self._time_index / self._dtsave).astype(int) - 1
+                    ] = np.mean(Qs_in)
+                    self._inlet_alpha[
+                        np.fix(self._time_index / self._dtsave).astype(int) - 1
+                    ] = np.mean(alpha)
+                    self._inlet_beta[
+                        np.fix(self._time_index / self._dtsave).astype(int) - 1
+                    ] = np.mean(beta)
+                    self._inlet_delta[
+                        np.fix(self._time_index / self._dtsave).astype(int) - 1
+                    ] = np.mean(delta)
+                    self._inlet_ai[
+                        np.fix(self._time_index / self._dtsave).astype(int) - 1
+                    ] = np.mean(ai_eq)
 
         else:  # inlet model not on
             # Qs_in = 0
@@ -827,24 +1008,36 @@ class Brie:
 
         # do implicit thing (updated on May 27, 2020 to force shoreline diffusivity to be greater than zero)
         if self._ast_model_on:
-            r_ipl = np.maximum(0, (
-                        self._coast_diff[np.maximum(1, np.minimum(self._wave_climl, np.round(90 - theta).astype(int)))
-                        ]
-                        * self._dt
-                        / 2
-                        / self._dy ** 2)
-                               )
+            r_ipl = np.maximum(
+                0,
+                (
+                    self._coast_diff[
+                        np.maximum(
+                            1,
+                            np.minimum(
+                                self._wave_climl, np.round(90 - theta).astype(int)
+                            ),
+                        )
+                    ]
+                    * self._dt
+                    / 2
+                    / self._dy ** 2
+                ),
+            )
 
             dv = np.r_[-r_ipl[-1], -r_ipl[1:], 1 + 2 * r_ipl, -r_ipl[0:-1], -r_ipl[0]]
             A = csr_matrix((dv, (self._di, self._dj)))
             # A = sps.sparse.csr_matrix((dv, (self._di, self._dj))).toarray()  # KA: spot checked, but probably worth a closer look
 
             RHS = (
-                    self._x_s
-                    + r_ipl
-                    * (self._x_s[np.r_[1:self._ny, 0]] - 2 * self._x_s + self._x_s[
-                np.r_[self._ny - 1, 0: self._ny - 1]])
-                    + self._x_s_dt
+                self._x_s
+                + r_ipl
+                * (
+                    self._x_s[np.r_[1 : self._ny, 0]]
+                    - 2 * self._x_s
+                    + self._x_s[np.r_[self._ny - 1, 0 : self._ny - 1]]
+                )
+                + self._x_s_dt
             )
 
             self._x_s = spsolve(
@@ -861,19 +1054,29 @@ class Brie:
         # save subset of BRIE variables (KA: I changed this from mod = 1 to mod = 0 to allow for saving every 1 timestep)
         """save subset of BRIE variables"""
         if np.mod(self._time_index, self._dtsave) == 0:
-            self._x_t_save[:, np.fix(self._time_index / self._dtsave).astype(int) - 1] = self._x_t
-            self._x_s_save[:, np.fix(self._time_index / self._dtsave).astype(int) - 1] = self._x_s
-            self._x_b_save[:, np.fix(self._time_index / self._dtsave).astype(int) - 1] = self._x_b
-            self._h_b_save[:, np.fix(self._time_index / self._dtsave).astype(int) - 1] = self._h_b
-            self._s_sf_save[:, np.fix(self._time_index / self._dtsave).astype(int) - 1] = s_sf
+            self._x_t_save[
+                :, np.fix(self._time_index / self._dtsave).astype(int) - 1
+            ] = self._x_t
+            self._x_s_save[
+                :, np.fix(self._time_index / self._dtsave).astype(int) - 1
+            ] = self._x_s
+            self._x_b_save[
+                :, np.fix(self._time_index / self._dtsave).astype(int) - 1
+            ] = self._x_b
+            self._h_b_save[
+                :, np.fix(self._time_index / self._dtsave).astype(int) - 1
+            ] = self._h_b
+            self._s_sf_save[
+                :, np.fix(self._time_index / self._dtsave).astype(int) - 1
+            ] = s_sf
 
     ###############################################################################
     # Finalize: only return necessary variables
-    ###############################################################################        
+    ###############################################################################
 
     def finalize(self):
 
-        # self.__dict__  # to look at attributes        
+        # self.__dict__  # to look at attributes
         # del(self._t)
         del self._inlet_y
         del self._inlet_idx
@@ -890,7 +1093,7 @@ class Brie:
         del self._coast_qs
 
         if self._inlet_model_on:
-            self._Qinlet = (self._Qinlet / self._dt)  # put into m3/yr
+            self._Qinlet = self._Qinlet / self._dt  # put into m3/yr
             # self._Qinlet_norm = (self._Qinlet / self._dy)  # put into m3/m/yr
         else:
             del self._inlet_Qs_in
