@@ -14,7 +14,7 @@ jobs:
     os: linux
     script:
     - pip install flake8
-    - flake8 brie
+    - flake8 brie tests
 
 before_install:
 - |
@@ -45,3 +45,4 @@ install:
 script:
 - python -c 'import brie; print(brie.__version__)'
 - pytest -vvv
+- bmi-test --config-file=tests/test_bmi/brie.yaml --root-dir=tests/test_-vvv bmi brie.brie_bmi:BrieBMI
