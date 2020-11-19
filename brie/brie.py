@@ -480,6 +480,14 @@ class Brie:
     def time_index(self):
         return self._time_index
 
+    @property
+    def time_step(self):
+        return self._dt
+
+    @property
+    def time(self):
+        return self.time_index * self.time_step
+
     # @property
     # def nt(self):
     #     return self._nt
