@@ -2,6 +2,7 @@ import numpy as np
 import scipy.constants
 import yaml
 from numpy.lib.scimath import power as cpower, sqrt as csqrt
+from scipy.interpolate import interp1d
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import spsolve
 
@@ -29,6 +30,93 @@ def calc_alongshore_transport_k(gravity=scipy.constants.g):
         * (0.5 ** 1.2)
         * (np.sqrt(gravity * 0.78) / (2 * np.pi)) ** 0.2
     )
+
+
+class WaveAngleGenerator:
+    def __init__(self, asymmetry=0.5, high_fraction=0.5, rng=None):
+        """Generate incoming wave angles.
+
+        Parameters
+        ----------
+        asymmetry: float, optional
+            Fraction of waves approaching from left (looking onshore).
+        high_fraction: float, optional
+            Fraction of waves approaching from angles higher than 45 degrees.
+
+        Examples
+        --------
+        >>> from brie.brie import WaveAngleGenerator
+        >>> angles = WaveAngleGenerator()
+        >>> angles.next()  # doctest: +SKIP
+        array([14.97622633])
+
+        >>> angles.next(samples=4)  # doctest: +SKIP
+        array([-21.13885031,  54.71667679,  14.01299681, -14.24465549])
+
+        >>> angles = WaveAngleGenerator(asymmetry=0.5, high_fraction=0.0)
+        >>> angles.pdf([-67.5, -22.5, 22.5, 67.5]) * 45.0
+        array([0. , 0.5, 0.5, 0. ])
+
+        >>> angles.cdf([-90, -45, 0, 45, 90])
+        array([0. , 0. , 0.5, 1. , 1. ])
+        """
+        if asymmetry < 0.0 or asymmetry > 1.0:
+            raise ValueError("wave angle asymmetry must be between 0 and 1")
+        if high_fraction < 0.0 or high_fraction > 1.0:
+            raise ValueError("fraction of high angles must be between 0 and 1")
+
+        if rng is None:
+            self._rng = np.random.default_rng()
+        else:
+            self._rng = rng
+
+        x = np.array([-90.0, -45.0, 0.0, 45.0, 90])
+        f = np.array(
+            [
+                0.0,
+                asymmetry * high_fraction,
+                asymmetry * (1.0 - high_fraction),
+                (1.0 - asymmetry) * (1.0 - high_fraction),
+                (1.0 - asymmetry) * high_fraction,
+            ]
+        ) / 45.0
+
+        self._wave_pdf = interp1d(x, f, kind="next")
+        self._wave_cdf = interp1d(x, np.cumsum(f) * 45.0)
+        self._wave_inv_cdf = interp1d(np.cumsum(f) * 45.0, x)
+
+    def pdf(self, angle):
+        """Cumulative distribution function for wave angle.
+
+        Parameters
+        ----------
+        angle: number or ndarray
+            Angle(s) at which to evaluate the cdf [degree].
+
+        Returns
+        -------
+        ndarray of float
+            Cumulative probabilities for each angle.
+        """
+        return self._wave_pdf(angle)
+
+    def cdf(self, angle):
+        return self._wave_cdf(angle)
+
+    def next(self, samples=1):
+        """Next wave angles from the distribution.
+
+        Parameters
+        ----------
+        samples : int
+            Number of wave angles to return.
+
+        Returns
+        -------
+        ndarray of float
+            Waves angles.
+        """
+        return self._wave_inv_cdf(self._rng.random(samples))
 
 
 class Brie:
