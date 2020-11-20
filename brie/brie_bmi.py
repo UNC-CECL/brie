@@ -657,10 +657,10 @@ class BrieBMI(Bmi):
         self._grid = {
             0: {
                 "type": "uniform_rectilinear",
-                "rank": 1,
-                "shape": numpy.array(self._brie._ny, dtype=int),
-                "spacing": numpy.array(self._brie._dy, dtype=float),
-                "origin": numpy.array(0.0, dtype=float),
+                "rank": 2,
+                "shape": numpy.array((1, self._brie._ny), dtype=int),
+                "spacing": numpy.array((1.0, self._brie._dy), dtype=float),
+                "origin": numpy.array((0.0, 0.0), dtype=float),
             }
         }
         self._var = {
