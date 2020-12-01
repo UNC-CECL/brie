@@ -3,7 +3,7 @@ requires = ["setuptools"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-testpaths = ["brie"]
+testpaths = ["brie", "tests"]
 norecursedirs = [".*", "*.egg*", "build", "dist"]
 addopts = """
   --ignore setup.py
