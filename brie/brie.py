@@ -496,12 +496,12 @@ class Brie:
             100, self._dy * self._ny, self._dy
         )  # alongshore array [KA: just used for plotting]
 
-        # variables used for saving data [KA: changed all self.dt to self._dt]
+        # variables used for saving data
         self._t = np.arange(
             self._dt, (self._dt * self._nt) + self._dt, self._dt
         )  # time array
         self._Qoverwash = np.float32(np.zeros(int(self._nt)))
-        self._Qshoreface = np.float32(np.zeros(int(self._nt)))
+        self._Qshoreface = np.float32(np.zeros(int(self._nt))) # new variable for time series of shoreface flux
         self._Qinlet = np.float32(np.zeros(int(self._nt)))
         self._inlet_age = []
         # KA: changed the saving arrays from matlab version to enable saving every time step in python, e.g., now if I
