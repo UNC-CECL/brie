@@ -134,7 +134,7 @@ class Brie:
                         / (1024 * np.pi ** (5 / 2) * w_s ** 2)
                         * (4 / 11 * (1 / self._z0 ** (11 / 4) - 1 / (self._d_sf ** (11 / 4))))
                 )
-        )
+        )   # KA: shoreface response rate [m^3/m/yr]
         self._s_sf_eq = (
                 3
                 * w_s
@@ -225,6 +225,7 @@ class Brie:
         # variables used for saving data [KA: changed all self.dt to self._dt]
         self._t = np.arange(self._dt, (self._dt * self._nt) + self._dt, self._dt)  # time array
         self._Qoverwash = np.float32(np.zeros(int(self._nt)))
+        self._Qshoreface = np.float32(np.zeros(int(self._nt)))
         self._Qinlet = np.float32(np.zeros(int(self._nt)))
         self._inlet_age = []
         # KA: changed the saving arrays from matlab version to enable saving every time step in python, e.g., now if I
@@ -408,7 +409,7 @@ class Brie:
             Qow_h = self._dt * self._Qow_max * Vd_h / np.maximum(Vd, self._Vd_max)
             Qow = Qow_b + Qow_h
 
-            # shoreface flux
+            # shoreface flux [m^3/m]
             Qsf = self._dt * self._k_sf * (self._s_sf_eq - s_sf)
 
             # changes
@@ -425,6 +426,9 @@ class Brie:
 
             # how much q overwash w in total [m3/yr] 
             self._Qoverwash[self._time_index - 1] = np.sum(self._dy * Qow_b / self._dt)
+
+            # how much q shoreface in total [m3/yr] [KA: added for comparison to B3D]
+            self._Qshoreface[self._time_index - 1] = np.sum(self._dy * Qsf / self._dt)
 
         elif (self._b3d_barrier_model_on):
             # do nothing, x_t_dt, x_s_dt, x_b_dt, and h_b_dt all come from Barrier3d (is there a better way to do this?)
