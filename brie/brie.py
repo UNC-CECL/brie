@@ -85,7 +85,7 @@ class WaveAngleGenerator:
         # ) / 45.0
 
         res = np.ones(int(wave_climl/4))
-        x = np.linspace(-90.0, 90.0, wave_climl)  # KA: best to have full resolution for CDF
+        x = np.linspace(-90.0, 90.0, wave_climl)  # wave angle resolution KA: best to have full (high) resolution for CDF
         f = 4 * np.r_[
             asymmetry * high_fraction * res,
             asymmetry * (1.0 - high_fraction) * res,
@@ -111,11 +111,23 @@ class WaveAngleGenerator:
         Returns
         -------
         ndarray of float
-            Probabilities for each angle.
+            This is the normalized angular distribution of wave energy (Eq 39 in BRIE, from AM06).
         """
         return self._wave_pdf(angle)
 
     def cdf(self, angle):
+        """Cumulative distribution function for wave angle.
+
+        Parameters
+        ----------
+        angle: number or ndarray
+            Angle(s) at which to evaluate the cdf [degree].
+
+        Returns
+        -------
+        ndarray of float
+            This is the normalized cumulative distribution of wave energy (Eq 25 in BRIE, from AM06).
+        """
         return self._wave_cdf(angle)
 
     def next(self, samples=1):
@@ -131,7 +143,7 @@ class WaveAngleGenerator:
         ndarray of float
             Waves angles.
         """
-        return int(self._wave_inv_cdf(self._rng.random(samples)))
+        return np.floor(self._wave_inv_cdf(self._rng.random(samples)))
 
 
 class Brie:
@@ -258,7 +270,8 @@ class Brie:
 
         # general parameters
         self._rho_w = sea_water_density
-        self._g = scipy.constants.g
+        #self._g = scipy.constants.g
+        self._g = 9.81  # KA: above has too much precision for comparison to Matlab version
 
         ###############################################################################
         # wave climate
@@ -270,7 +283,7 @@ class Brie:
         self._wave_high = wave_angle_high_fraction
 
         # alongshore distribution of wave energy
-        self._wave_climl = int(180.0 / wave_angle_resolution) # resolution of possible wave approach angles (1 per deg)
+        self._wave_climl = int(180.0 / wave_angle_resolution)
 
         # k for alongshore transport
         self._k = calc_alongshore_transport_k(gravity=self._g)
@@ -329,7 +342,7 @@ class Brie:
         Parameters
         ----------
         wave_angle: float, optional
-            If provided, the current incoming wave angle [deg]. Added for comparison
+            If provided, the current incoming wave angle [deg]. Added for comparison to Matlab version of BRIE.
         xs: float, optional
             If provided, the current position of the shoreline [m].
         """
@@ -423,13 +436,13 @@ class Brie:
 
         self._angle_array = np.deg2rad(
             np.linspace(-90.0, 90.0, self._wave_climl)
-        )   # array of resolution angles for wave climate
+        )   # array of resolution angles for wave climate [radians]
 
         self._angles = WaveAngleGenerator(
             asymmetry = self._wave_asym,
             high_fraction = self._wave_high,
             wave_climl = self._wave_climl,
-        ) # wave angle generator for each time step for calculating Qs_in
+        )  # wave angle generator for each time step for calculating Qs_in
 
         wave_pdf = self._angles.pdf(
             np.rad2deg(self._angle_array)
@@ -454,24 +467,22 @@ class Brie:
         # shoreline change dependent variables
         ###############################################################################
 
-        self._coast_diff = np.convolve(
-            wave_pdf,
-            -(
+        # shoreline change is NOT calculated using a single wave angle (as in Qs_in); instead, we account for the angle
+        # dependence of diffusivity using a nonlinear term from AM06 (Eq. 37-39 in the BRIE), and convolve it with the
+        # wave climate pdf (the normalized angular distribution of wave energy) to get a wave-climate averaged shoreline
+        # diffusivity for every alongshore location
+        diff = -(
                 self._k
                 / (self._h_b_crit + self._d_sf)
                 * self._wave_height ** 2.4
-                * self._wave_period ** 0.2
-            )
-            * 365
-            * 24
-            * 3600
-            * (np.cos(self._angle_array) ** 0.2)
-            * (1.2 * np.sin(self._angle_array) ** 2 - np.cos(self._angle_array) ** 2),
-            mode="same",
-        )   # shoreline change is NOT calculated using the wave angle selected randomly from the cdf at every time step;
-            # Instead, we use this function. Still trying to understand what this is, and why we using the critical
-            # height of the barrier here...
-            # KA: note first and last points are different here from Matlab version [m2/yr]
+                * self._wave_period ** 0.2) * 365 * 24 * 3600 * (np.cos(self._angle_array) ** 0.2) * \
+               (1.2 * np.sin(self._angle_array) ** 2 - np.cos(self._angle_array) ** 2)
+
+        # KA NOTE: the "same" method differs in Matlab and Numpy; here we pad and slice out the "same" equivalent
+        conv = np.convolve(wave_pdf, diff, mode="full")
+        npad = len(diff) - 1
+        first = npad - npad // 2
+        self._coast_diff = conv[first:first + len(wave_pdf)]
 
         self._di = (
             np.r_[
@@ -786,10 +797,8 @@ class Brie:
                 wave_ang = self._wave_angle[self._time_index - 1]
 
             else:
-                # wave_ang = np.nonzero(self._wave_cdf > np.random.rand())[0][
-                wave_ang = np.nonzero(self._wave_cdf > self._RNG.random())[0][
-                    0
-                ]  # just get the first nonzero element
+                # wave_ang = np.nonzero(self._wave_cdf > np.random.rand())[0][] # just get the first nonzero element
+                wave_ang = int(self._angles.next())  # KA: use the wave generator!
 
             # sed transport this timestep for given wave angle (KA: NOTE, -1 indexing is for Python)
             Qs = (
