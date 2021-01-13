@@ -99,6 +99,7 @@ class WaveAngleGenerator:
         self._wave_pdf = interp1d(x, f, kind="next")
         self._wave_cdf = interp1d(x, np.cumsum(f))
         self._wave_inv_cdf = interp1d(np.cumsum(f), x)
+        self._lower_bnd = np.min(np.cumsum(f))
 
     def pdf(self, angle):
         """Probability distribution function for wave angle.
@@ -143,7 +144,14 @@ class WaveAngleGenerator:
         ndarray of float
             Waves angles.
         """
-        return np.floor(self._wave_inv_cdf(self._rng.random(samples)))
+
+        # I don't want to extrapolate, so instead if the rng is below the interpolation bounds, I pick a new number
+        x = self._rng.random(samples)
+
+        while x < self._lower_bnd:
+            x = self._rng.random(samples)
+
+        return np.floor(self._wave_inv_cdf(x))
 
 
 class Brie:
