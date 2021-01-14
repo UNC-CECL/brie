@@ -582,7 +582,8 @@ class Brie:
         self._s_sf_save = np.float32(
             np.zeros((self._ny, np.size(np.arange(0, self._nt, self._dtsave))))
         )
-        self._s_sf_save[:, 0] = self._s_sf_eq
+        # self._s_sf_save[:, 0] = self._s_sf_eq
+        self._s_sf_save[:, 0] = self._d_sf / (self._x_s - self._x_t)  # added by KA to represent the actual initial s_sf
 
         # initialize empty arrays for barrier model (added by KA for coupling)
         self._x_t_dt = np.zeros(self._ny)
