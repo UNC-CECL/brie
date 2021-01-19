@@ -188,6 +188,8 @@ class Brie:
         time_step_count=100000,
         save_spacing=1e3,
         inlet_min_spacing=10000.0,
+        wave_angle=None,
+        xs=None,
     ):
         """The Barrier Inlet Environment model, BRIE.
 
@@ -255,6 +257,10 @@ class Brie:
             Saving interval.
         inlet_min_spacing: float, optional
             Minimum inlet spacing [m].
+        wave_angle: float, optional
+            An array of wave angles for seeding (remove stochasticity).
+        xs: float, optional
+            An array of shoreline position for seeding (remove stochasticity).
 
         Examples
         --------
@@ -336,7 +342,10 @@ class Brie:
         self._marsh_cover = back_barrier_marsh_fraction
 
         # set the dependent variables
-        self.dependent()
+        if self._bseed:
+            self.dependent(wave_angle=wave_angle, xs=xs)
+        else:
+            self.dependent()
 
     @classmethod
     def from_yaml(cls, filepath):
@@ -1200,7 +1209,7 @@ class Brie:
                 # inlet age
                 # fancy lightweight way to keep track of where inlets are in the model
                 # KA: note that this differs from matlab version, here we do this all
-                # in the for loop
+                # in the for loop (but still [time step, inlet starting ID])
                 self._inlet_age.append(
                     [self._time_index, self._inlet_idx[j - 1][0].astype("int32")]
                 )
@@ -1338,7 +1347,6 @@ class Brie:
         else:
             del self._inlet_Qs_in
             del self._inlet_migr
-            del self._inlet_nr
             del self._inlet_age
             del self._Qinlet
             del self._inlet_ai
