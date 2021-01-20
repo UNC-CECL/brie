@@ -613,6 +613,10 @@ class Brie:
         return self.time_index * self.time_step
 
     @property
+    def nt(self):
+        return self._nt
+
+    @property
     def x_t_dt(self):
         return self._x_t_dt
 
@@ -641,8 +645,32 @@ class Brie:
         return self._x_b
 
     @property
+    def x_b_save(self):
+        return self._x_b_save
+
+    @property
     def h_b(self):
         return self._h_b
+
+    @property
+    def h_b_save(self):
+        return self._h_b_save
+
+    @property
+    def ny(self):
+        return self._ny
+
+    @property
+    def d_sf(self):
+        return self._d_sf
+
+    @property
+    def k_sf(self):
+        return self._k_sf
+
+    @property
+    def s_sf_eq(self):
+        return self._s_sf_eq
 
     def u(self, a_star, gam, ah_star):
         """new explicit relationship between boundary conditions and inlet area"""
