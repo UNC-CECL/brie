@@ -4,7 +4,8 @@ Credits
 Development Leads
 -----------------
 
-* Katherine Anarde <anardek@gmail.com>
+* Katherine Anarde <kanarde@ncsu.edu>
+* Jaap Nienhuis <j.h.nienhuis@uu.nl>
 
 Contributors
 ------------
