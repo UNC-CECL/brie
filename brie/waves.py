@@ -1,6 +1,5 @@
 import numpy as np
 from scipy.interpolate import interp1d
-
 from scipy.stats import rv_continuous
 
 
@@ -36,7 +35,13 @@ class ashton_gen(rv_continuous):
             ]
 
     def _scalar_pdf(self, x, a, h):
-        pdf = [a * h, a * (1.0 - h), (1.0 - a) * (1.0 - h), (1.0 - a) * h, (1.0 - a) * h]
+        pdf = [
+            a * h,
+            a * (1.0 - h),
+            (1.0 - a) * (1.0 - h),
+            (1.0 - a) * h,
+            (1.0 - a) * h,
+        ]
         return pdf[int(x * 4)] * 4
         # return interp1d([0.0, 0.25, 0.5, 0.75, 1.0], pdf, kind="previous")(x) * 4.0
 

@@ -1,16 +1,16 @@
 from functools import partial
 
 import numpy as np
-import scipy.stats
 import pytest
+import scipy.stats
 from numpy.testing import assert_array_almost_equal
 from scipy.sparse import csr_matrix
 
 from brie.alongshore_transporter import (
-    build_matrix,
-    build_tridiagonal_matrix,
-    calc_alongshore_transport_k,
+    _build_matrix,
+    _build_tridiagonal_matrix,
     calc_alongshore_transport,
+    calc_alongshore_transport_k,
     calc_coast_diff,
     calc_coast_qs,
     calc_shoreline_angles,
@@ -19,15 +19,7 @@ from brie.alongshore_transporter import (
 
 def old_calc_shoreline_angles(x, spacing=1.0):
     x = np.asarray(x)
-    theta = (
-        180
-        * (
-            np.arctan2(
-                (x[np.r_[1 : len(x), 0]] - x), spacing
-            )
-        )
-        / np.pi
-    )
+    theta = 180 * (np.arctan2((x[np.r_[1 : len(x), 0]] - x), spacing)) / np.pi
     return np.deg2rad(theta)
 
 
@@ -69,7 +61,9 @@ def old_calc_alongshore_transport(
                         # - wave_ang
                         # - (wave_climl / 180 * theta)
                         # wave_climl + theta - wave_ang
-                        wave_climl - theta - wave_ang
+                        wave_climl
+                        - theta
+                        - wave_ang
                         + 1
                     ),
                 ),
@@ -112,9 +106,7 @@ def old_calc_coast_diff(
     return coast_diff[
         np.maximum(
             0,
-            np.minimum(
-                wave_climl + 1, np.round(90 - theta).astype(int)
-            ),
+            np.minimum(wave_climl + 1, np.round(90 - theta).astype(int)),
         )
     ]
 
@@ -176,9 +168,7 @@ def old_build_matrix(x_s, wave_distribution, dy=1.0, wave_height=1.0, wave_perio
             coast_diff[
                 np.maximum(
                     1,
-                    np.minimum(
-                        wave_climl + 1, np.round(90 - theta).astype(int)
-                    ),
+                    np.minimum(wave_climl + 1, np.round(90 - theta).astype(int)),
                 )
             ]
             * dt
@@ -192,12 +182,7 @@ def old_build_matrix(x_s, wave_distribution, dy=1.0, wave_height=1.0, wave_perio
 
     RHS = (
         x_s
-        + r_ipl
-        * (
-            x_s[np.r_[1 : ny, 0]]
-            - 2 * x_s
-            + x_s[np.r_[ny - 1, 0 : ny - 1]]
-        )
+        + r_ipl * (x_s[np.r_[1:ny, 0]] - 2 * x_s + x_s[np.r_[ny - 1, 0 : ny - 1]])
         # + self._x_s_dt
     )
 
@@ -236,13 +221,15 @@ def old_build_tridiag(data):
     return A
 
 
-@pytest.mark.parametrize("angle", (60, 45, 30, 0, -30, -45, -60.))
+@pytest.mark.parametrize("angle", (60, 45, 30, 0, -30, -45, -60.0))
 @pytest.mark.parametrize("shoreline_angle", (-15, 0, 15))
 def test_alongshore_transport_old_to_new(angle, shoreline_angle):
     angle = np.deg2rad(angle)
     shoreline_angle = np.deg2rad(shoreline_angle)
     assert_array_almost_equal(
-        old_calc_alongshore_transport(angle, shoreline_angle=np.full(5, shoreline_angle)),
+        old_calc_alongshore_transport(
+            angle, shoreline_angle=np.full(5, shoreline_angle)
+        ),
         calc_alongshore_transport(angle, shoreline_angle=np.full(5, shoreline_angle)),
     )
 
@@ -252,13 +239,12 @@ def test_shoreline_old_to_new():
     x = np.random.uniform(low=-10.0, high=10.0, size=1000)
     assert_array_almost_equal(
         calc_shoreline_angles(x, spacing=spacing),
-        old_calc_shoreline_angles(x, spacing=spacing)
+        old_calc_shoreline_angles(x, spacing=spacing),
     )
 
-    x = np.arange(12.)
+    x = np.arange(12.0)
     assert_array_almost_equal(
-        calc_shoreline_angles(x, spacing=1.0),
-        old_calc_shoreline_angles(x, spacing=1.0)
+        calc_shoreline_angles(x, spacing=1.0), old_calc_shoreline_angles(x, spacing=1.0)
     )
 
 
@@ -286,10 +272,7 @@ def test_flat_shoreline(func):
 
 @pytest.mark.parametrize("func", (calc_shoreline_angles, old_calc_shoreline_angles))
 def test_wraparound(func):
-    assert np.all(
-        func([1.0, 0.0, 0.0, 0.0])
-        == [-np.pi / 4.0, 0.0, 0.0, np.pi / 4.0]
-    )
+    assert np.all(func([1.0, 0.0, 0.0, 0.0]) == [-np.pi / 4.0, 0.0, 0.0, np.pi / 4.0])
 
 
 def test_calc_coast_qs_old_to_new():
@@ -329,12 +312,8 @@ def test_calc_coast_qs_wave_height(func):
     angles = np.random.uniform(low=-np.pi / 2.0, high=np.pi / 2.0, size=50)
     assert np.all(func(angles) == func(angles, wave_height=1.0))
 
-    assert np.all(
-        np.abs(func(angles, wave_height=2.0)) > np.abs(func(angles))
-    )
-    assert np.all(
-        np.abs(func(angles, wave_height=0.5)) < np.abs(func(angles))
-    )
+    assert np.all(np.abs(func(angles, wave_height=2.0)) > np.abs(func(angles)))
+    assert np.all(np.abs(func(angles, wave_height=0.5)) < np.abs(func(angles)))
 
 
 @pytest.mark.parametrize("func", (calc_coast_qs, old_calc_coast_qs))
@@ -342,15 +321,13 @@ def test_calc_coast_qs_wave_period(func):
     angles = np.random.uniform(low=-np.pi / 2.0, high=np.pi / 2.0, size=50)
     assert np.all(func(angles) == calc_coast_qs(angles, wave_period=10.0))
 
-    assert np.all(
-        np.abs(func(angles, wave_period=20.0)) > np.abs(func(angles))
-    )
-    assert np.all(
-        np.abs(func(angles, wave_period=5.0)) < np.abs(func(angles))
-    )
+    assert np.all(np.abs(func(angles, wave_period=20.0)) > np.abs(func(angles)))
+    assert np.all(np.abs(func(angles, wave_period=5.0)) < np.abs(func(angles)))
 
 
-@pytest.mark.parametrize("func", (calc_alongshore_transport, old_calc_alongshore_transport))
+@pytest.mark.parametrize(
+    "func", (calc_alongshore_transport, old_calc_alongshore_transport)
+)
 def test_alongshore_transport(func):
     # angles = np.random.uniform(low=-np.pi / 2.0, high=np.pi / 2.0, size=50)
     # angles = np.random.uniform(low=0.0, high=np.pi, size=50)
@@ -363,7 +340,9 @@ def test_alongshore_transport(func):
 
 
 @pytest.mark.parametrize("shoreline_angle", (-15, 0, 15))
-@pytest.mark.parametrize("func", (calc_alongshore_transport, old_calc_alongshore_transport))
+@pytest.mark.parametrize(
+    "func", (calc_alongshore_transport, old_calc_alongshore_transport)
+)
 def test_alongshore_transport_shoreline_angle(func, shoreline_angle):
     shoreline_angle = np.deg2rad(shoreline_angle)
     assert_array_almost_equal(
@@ -372,63 +351,69 @@ def test_alongshore_transport_shoreline_angle(func, shoreline_angle):
     )
 
 
-@pytest.mark.parametrize("func", (calc_alongshore_transport, old_calc_alongshore_transport))
+@pytest.mark.parametrize(
+    "func", (calc_alongshore_transport, old_calc_alongshore_transport)
+)
 def test_alongshore_transport_normal_waves(func):
-    assert func(
-        np.pi / 4.0, shoreline_angle=np.pi / 4.0
-    ) == pytest.approx(0.0)
-    assert func(
-        -np.pi / 4.0, shoreline_angle=-np.pi / 4.0
-    ) == pytest.approx(0.0)
+    assert func(np.pi / 4.0, shoreline_angle=np.pi / 4.0) == pytest.approx(0.0)
+    assert func(-np.pi / 4.0, shoreline_angle=-np.pi / 4.0) == pytest.approx(0.0)
 
     angles = np.random.uniform(low=-np.pi / 2.0, high=np.pi / 2.0, size=50)
     assert func(angles, shoreline_angle=angles) == pytest.approx(0.0)
 
 
-@pytest.mark.parametrize("func", (calc_alongshore_transport, old_calc_alongshore_transport))
+@pytest.mark.parametrize(
+    "func", (calc_alongshore_transport, old_calc_alongshore_transport)
+)
 def test_alongshore_transport_symmetrical(func):
     angles = np.random.uniform(low=-np.pi / 2.0, high=np.pi / 2.0, size=50)
     assert_array_almost_equal(
-        func(0.0, shoreline_angle=angles),
-        -func(0.0, shoreline_angle=-angles)
+        func(0.0, shoreline_angle=angles), -func(0.0, shoreline_angle=-angles)
     )
 
 
-@pytest.mark.parametrize("func", (calc_alongshore_transport, old_calc_alongshore_transport))
+@pytest.mark.parametrize(
+    "func", (calc_alongshore_transport, old_calc_alongshore_transport)
+)
 def test_alongshore_transport_to_the_left(func):
     angles = np.random.uniform(low=0.0, high=np.pi / 2.0, size=50)
     assert np.all(
-        func(0.0, shoreline_angle=angles) <= 0.0
+        func(0.0, shoreline_angle=angles)
+        <= 0.0
         # calc_alongshore_transport(np.pi / 2.0, shoreline_angle=angles) < 0.0
     )
 
 
-@pytest.mark.parametrize("func", (calc_alongshore_transport, old_calc_alongshore_transport))
+@pytest.mark.parametrize(
+    "func", (calc_alongshore_transport, old_calc_alongshore_transport)
+)
 def test_alongshore_transport_to_the_right(func):
     angles = np.random.uniform(low=-np.pi / 2.0, high=0.0, size=50)
     assert np.all(func(0.0, shoreline_angle=angles) >= 0.0)
     # assert np.all(calc_alongshore_transport(np.pi / 2.0, shoreline_angle=angles) > 0.0)
 
 
-@pytest.mark.parametrize("func", (calc_alongshore_transport, old_calc_alongshore_transport))
+@pytest.mark.parametrize(
+    "func", (calc_alongshore_transport, old_calc_alongshore_transport)
+)
 def test_alongshore_transport_parallel(func):
     angles = np.random.uniform(low=-np.pi / 2.0, high=-np.pi / 4.0, size=50)
     assert_array_almost_equal(
-        func(angles, shoreline_angle=np.pi / 4.0),
-        func(0.0, shoreline_angle=0.0)
+        func(angles, shoreline_angle=np.pi / 4.0), func(0.0, shoreline_angle=0.0)
     )
 
     angles = np.random.uniform(low=np.pi / 4.0, high=np.pi / 2.0, size=50)
     assert_array_almost_equal(
-        func(angles, shoreline_angle=-np.pi / 4.0),
-        func(np.pi, shoreline_angle=0.0)
+        func(angles, shoreline_angle=-np.pi / 4.0), func(np.pi, shoreline_angle=0.0)
     )
 
 
 @pytest.mark.parametrize("angle", (-75, -60, -45, -30, -15, 0, 15, 30, 45, 60, 75))
 def test_coast_diff_old_to_new(angle):
     dist = scipy.stats.uniform(loc=-np.pi / 2.0, scale=np.pi)
-    assert calc_coast_diff(dist.pdf, np.deg2rad(angle)) == pytest.approx(old_calc_coast_diff(dist.pdf, np.deg2rad(angle)))
+    assert calc_coast_diff(dist.pdf, np.deg2rad(angle)) == pytest.approx(
+        old_calc_coast_diff(dist.pdf, np.deg2rad(angle))
+    )
 
 
 @pytest.mark.parametrize("func", (calc_coast_diff, old_calc_coast_diff))
@@ -447,7 +432,7 @@ def test_coast_diff_symmetrical(func):
 
 
 def test_build_matrix():
-    mat = build_tridiagonal_matrix([1, 2, 3, 4, 5])
+    mat = _build_tridiagonal_matrix([1, 2, 3, 4, 5])
     assert np.all(
         mat.toarray()
         == [
@@ -461,7 +446,7 @@ def test_build_matrix():
 
 
 def test_build_matrix_with_lower():
-    mat = build_tridiagonal_matrix([1, 2, 3, 4, 5], lower=[11, 12, 13, 14, 15])
+    mat = _build_tridiagonal_matrix([1, 2, 3, 4, 5], lower=[11, 12, 13, 14, 15])
     assert np.all(
         mat.toarray()
         == [
@@ -475,7 +460,7 @@ def test_build_matrix_with_lower():
 
 
 def test_build_matrix_with_upper():
-    mat = build_tridiagonal_matrix([1, 2, 3, 4, 5], upper=[11, 12, 13, 14, 15])
+    mat = _build_tridiagonal_matrix([1, 2, 3, 4, 5], upper=[11, 12, 13, 14, 15])
     assert np.all(
         mat.toarray()
         == [
@@ -489,7 +474,7 @@ def test_build_matrix_with_upper():
 
 
 def test_build_matrix_with_upper_and_lower():
-    mat = build_tridiagonal_matrix([1, 2, 3, 4, 5], lower=[0] * 5, upper=[0] * 5)
+    mat = _build_tridiagonal_matrix([1, 2, 3, 4, 5], lower=[0] * 5, upper=[0] * 5)
     assert np.all(
         mat.toarray()
         == [
@@ -505,7 +490,7 @@ def test_build_matrix_with_upper_and_lower():
 def test_tridiag_old_and_new():
     data = np.arange(1, 6)
     assert_array_almost_equal(
-        build_tridiagonal_matrix(data).toarray(),
+        _build_tridiagonal_matrix(data).toarray(),
         old_build_tridiag(data).toarray(),
     )
 
@@ -516,7 +501,7 @@ def test_build_matrices_old_and_new():
     x_s[-1] = 1.0
     wave_distribution = scipy.stats.uniform(loc=-np.pi / 2.0, scale=np.pi)
     expected_mat, expected_rhs, expected_v = old_build_matrix(x_s, wave_distribution)
-    actual_mat, actual_rhs, actual_v = build_matrix(x_s, wave_distribution)
+    actual_mat, actual_rhs, actual_v = _build_matrix(x_s, wave_distribution)
 
     assert_array_almost_equal(expected_v, actual_v)
     assert_array_almost_equal(expected_rhs, actual_rhs)

@@ -6,8 +6,8 @@ from scipy.interpolate import interp1d
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import spsolve
 
-
 from .alongshore_transporter import calc_alongshore_transport_k
+
 
 def inlet_fraction(self, a, b, c, d, I):
     """what are the inlet fractions"""
