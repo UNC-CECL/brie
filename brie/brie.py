@@ -7,116 +7,14 @@ from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import spsolve
 
 
+from .alongshore_transporter import calc_alongshore_transport_k
+
 def inlet_fraction(self, a, b, c, d, I):
     """what are the inlet fractions"""
     return a + (b / (1 + c * (I ** d)))
 
 
-def calc_alongshore_transport_k(gravity=scipy.constants.g):
-    """Calculate alongshore transport diffusion coefficient.
-
-    The diffusion coefficient is calculated from Nienhuis, Ashton, Giosan, 2015.
-    Note that the Ashton, 2006 value for *k* is incorrect.
-
-    Parameters
-    ----------
-    gravity : float, optional
-        Acceleration due to gravity [m/s^2].
-    """
-    return (
-        5.3e-06
-        * 1050
-        * (gravity ** 1.5)
-        * (0.5 ** 1.2)
-        * (np.sqrt(gravity * 0.78) / (2 * np.pi)) ** 0.2
-    )
-
-
-class WaveAngleGenerator:
-    def __init__(self, asymmetry=0.5, high_fraction=0.5, rng=None):
-        """Generate incoming wave angles.
-
-        Parameters
-        ----------
-        asymmetry: float, optional
-            Fraction of waves approaching from left (looking onshore).
-        high_fraction: float, optional
-            Fraction of waves approaching from angles higher than 45 degrees.
-
-        Examples
-        --------
-        >>> from brie.brie import WaveAngleGenerator
-        >>> angles = WaveAngleGenerator()
-        >>> angles.next()  # doctest: +SKIP
-        array([14.97622633])
-
-        >>> angles.next(samples=4)  # doctest: +SKIP
-        array([-21.13885031,  54.71667679,  14.01299681, -14.24465549])
-
-        >>> angles = WaveAngleGenerator(asymmetry=0.5, high_fraction=0.0)
-        >>> angles.pdf([-67.5, -22.5, 22.5, 67.5]) * 45.0
-        array([0. , 0.5, 0.5, 0. ])
-
-        >>> angles.cdf([-90, -45, 0, 45, 90])
-        array([0. , 0. , 0.5, 1. , 1. ])
-        """
-        if asymmetry < 0.0 or asymmetry > 1.0:
-            raise ValueError("wave angle asymmetry must be between 0 and 1")
-        if high_fraction < 0.0 or high_fraction > 1.0:
-            raise ValueError("fraction of high angles must be between 0 and 1")
-
-        if rng is None:
-            self._rng = np.random.default_rng()
-        else:
-            self._rng = rng
-
-        x = np.array([-90.0, -45.0, 0.0, 45.0, 90])
-        f = np.array(
-            [
-                0.0,
-                asymmetry * high_fraction,
-                asymmetry * (1.0 - high_fraction),
-                (1.0 - asymmetry) * (1.0 - high_fraction),
-                (1.0 - asymmetry) * high_fraction,
-            ]
-        ) / 45.0
-
-        self._wave_pdf = interp1d(x, f, kind="next")
-        self._wave_cdf = interp1d(x, np.cumsum(f) * 45.0)
-        self._wave_inv_cdf = interp1d(np.cumsum(f) * 45.0, x)
-
-    def pdf(self, angle):
-        """Cumulative distribution function for wave angle.
-
-        Parameters
-        ----------
-        angle: number or ndarray
-            Angle(s) at which to evaluate the cdf [degree].
-
-        Returns
-        -------
-        ndarray of float
-            Cumulative probabilities for each angle.
-        """
-        return self._wave_pdf(angle)
-
-    def cdf(self, angle):
-        return self._wave_cdf(angle)
-
-    def next(self, samples=1):
-        """Next wave angles from the distribution.
-
-        Parameters
-        ----------
-        samples : int
-            Number of wave angles to return.
-
-        Returns
-        -------
-        ndarray of float
-            Waves angles.
-        """
-        return self._wave_inv_cdf(self._rng.random(samples))
+SECONDS_PER_YEAR = 3600.0 * 24.0 * 365.0
 
 
 class Brie:
@@ -232,6 +130,7 @@ class Brie:
         self._wave_period = wave_period
         self._wave_asym = wave_asymmetry
         self._wave_high = wave_angle_high_fraction
+        self._wave_angle = 0.0  # the default initial wave angle
 
         # alongshore distribution of wave energy
         self._wave_climl = int(180.0 / wave_angle_resolution)
@@ -356,32 +255,32 @@ class Brie:
             * (5 + 3 * self._wave_period ** 2 * self._g / 4 / (np.pi ** 2) / self._d_sf)
         )
         # equilibrium shoreface slope
-        self._wave_cdf = np.cumsum(
-            4
-            * np.r_[
-                (
-                    self._wave_asym
-                    * self._wave_high
-                    * np.ones((int(self._wave_climl / 4), 1))
-                ),
-                (
-                    self._wave_asym
-                    * (1 - self._wave_high)
-                    * np.ones((int(self._wave_climl / 4), 1))
-                ),
-                (
-                    (1 - self._wave_asym)
-                    * (1 - self._wave_high)
-                    * np.ones((int(self._wave_climl / 4), 1))
-                ),
-                (
-                    (1 - self._wave_asym)
-                    * self._wave_high
-                    * np.ones((int(self._wave_climl / 4), 1))
-                ),
-            ]
-            / self._wave_climl
-        )
+        # self._wave_cdf = np.cumsum(
+        #     4
+        #     * np.r_[
+        #         (
+        #             self._wave_asym
+        #             * self._wave_high
+        #             * np.ones((int(self._wave_climl / 4), 1))
+        #         ),
+        #         (
+        #             self._wave_asym
+        #             * (1 - self._wave_high)
+        #             * np.ones((int(self._wave_climl / 4), 1))
+        #         ),
+        #         (
+        #             (1 - self._wave_asym)
+        #             * (1 - self._wave_high)
+        #             * np.ones((int(self._wave_climl / 4), 1))
+        #         ),
+        #         (
+        #             (1 - self._wave_asym)
+        #             * self._wave_high
+        #             * np.ones((int(self._wave_climl / 4), 1))
+        #         ),
+        #     ]
+        #     / self._wave_climl
+        # )
         wave_pdf = np.concatenate(
             4
             * np.r_[
@@ -472,7 +371,7 @@ class Brie:
             if xs is None or wave_angle is None:
                 raise ValueError("if bseed is True, xs and wave_angle must be provided")
             self._x_s = xs
-            self._wave_angle = wave_angle
+            # self._wave_angle = wave_angle
         else:
             self._x_s = (
                 self._RNG.random(self._ny) + self._d_sf / self._s_sf_eq + self._x_t
@@ -611,6 +510,16 @@ class Brie:
     @property
     def h_b(self):
         return self._h_b
+
+    @property
+    def wave_angle(self):
+        return self._wave_angle
+
+    @wave_angle.setter
+    def wave_angle(self, new_angle):
+        if new_angle > 90.0 or new_angle < -90:
+            raise ValueError("wave angle must be between -90 and 90 degrees")
+        self._wave_angle = wave_angle
 
     def u(self, a_star, gam, ah_star):
         """new explicit relationship between boundary conditions and inlet area"""
@@ -775,15 +684,15 @@ class Brie:
                 / np.pi
             )
 
+            wave_ang = self._wave_angle
             # wave direction
-            if self._bseed:
-                wave_ang = self._wave_angle[self._time_index - 1]
-
-            else:
-                # wave_ang = np.nonzero(self._wave_cdf > np.random.rand())[0][
-                wave_ang = np.nonzero(self._wave_cdf > self._RNG.random())[0][
-                    0
-                ]  # just get the first nonzero element
+            # if self._bseed:
+            #     wave_ang = self._wave_angle[self._time_index - 1]
+            # else:
+            #     # wave_ang = np.nonzero(self._wave_cdf > np.random.rand())[0][
+            #     wave_ang = np.nonzero(self._wave_cdf > self._RNG.random())[0][
+            #         0
+            #     ]  # just get the first nonzero element
 
             # sed transport this timestep (KA: NOTE, -1 indexing is for Python)
             Qs = (
