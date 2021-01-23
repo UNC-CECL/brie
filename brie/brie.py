@@ -32,6 +32,10 @@ def calc_alongshore_transport_k(gravity=scipy.constants.g):
     )
 
 
+class BrieError(Exception):
+    pass
+
+
 class WaveAngleGenerator:
     def __init__(self, asymmetry=0.8, high_fraction=0.2, wave_climl=180, rng=None):
         """Generate incoming wave angles.
@@ -328,6 +332,9 @@ class Brie:
         self._nt = time_step_count
         self._dtsave = save_spacing
 
+        # boolean for drowning
+        self._drown = False
+
         ###############################################################################
         # inlet model parameters & functions
         ###############################################################################
@@ -617,20 +624,40 @@ class Brie:
         return self._nt
 
     @property
+    def drown(self):
+        return self._drown
+
+    @property
     def x_t_dt(self):
         return self._x_t_dt
+
+    @x_t_dt.setter
+    def x_t_dt(self, value):
+        self._x_t_dt = value
 
     @property
     def x_s_dt(self):
         return self._x_s_dt
 
+    @x_s_dt.setter
+    def x_s_dt(self, value):
+        self._x_s_dt = value
+
     @property
     def x_b_dt(self):
         return self._x_b_dt
 
+    @x_b_dt.setter
+    def x_b_dt(self, value):
+        self._x_b_dt = value
+
     @property
     def h_b_dt(self):
         return self._h_b_dt
+
+    @h_b_dt.setter
+    def h_b_dt(self, value):
+        self._h_b_dt = value
 
     @property
     def x_t(self):
@@ -644,17 +671,33 @@ class Brie:
     def x_b(self):
         return self._x_b
 
+    @x_b.setter
+    def x_b(self, value):
+        self._x_b = value
+
     @property
     def x_b_save(self):
         return self._x_b_save
+
+    @x_b_save.setter
+    def x_b_save(self, value):
+        self._x_b_save = value
 
     @property
     def h_b(self):
         return self._h_b
 
+    @h_b.setter
+    def h_b(self, value):
+        self._h_b = value
+
     @property
     def h_b_save(self):
         return self._h_b_save
+
+    @h_b_save.setter
+    def h_b_save(self, value):
+        self._h_b_save = value
 
     @property
     def ny(self):
@@ -765,11 +808,15 @@ class Brie:
         )  # basin depth
         s_sf = self._d_sf / (self._x_s - self._x_t)  # shoreface slope
 
-        # if the barrier drows, break
+        # if the barrier drowns, break
         if np.sum(w < -10) > (self._ny / 2) or np.any(w < -1000):
+            self._drown = True
             print("Barrier Drowned - break")
-            return
-            # break
+
+        # if self._drown:
+        #     raise BrieError(
+        #         "Barrier has WIDTH DROWNED at t = {time} years".format(time=self.time)
+        #     )
 
         if self._barrier_model_on:
             # volume deficit
@@ -811,11 +858,12 @@ class Brie:
             self._Qshoreface[self._time_index - 1] = np.sum(self._dy * Qsf / self._dt)
 
         elif self._b3d_barrier_model_on:
+            pass
             # do nothing, x_t_dt, x_s_dt, x_b_dt, and h_b_dt all come from Barrier3d (is there a better way to do this?)
-            self._x_t_dt = self._x_t_dt
-            self._x_s_dt = self._x_s_dt
-            self._x_b_dt = self._x_b_dt
-            self._h_b_dt = self._h_b_dt
+            # self._x_t_dt = self._x_t_dt
+            # self._x_s_dt = self._x_s_dt
+            # self._x_b_dt = self._x_b_dt
+            # self._h_b_dt = self._h_b_dt
 
         else:
             self._x_t_dt = np.zeros(self._ny)
