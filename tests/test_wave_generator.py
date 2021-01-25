@@ -5,6 +5,7 @@ from brie.brie import WaveAngleGenerator
 
 
 def test_waves_min_and_max():
+
     waves = WaveAngleGenerator()
     angles = waves.next(10000)
     assert np.all(angles >= -90.0)
