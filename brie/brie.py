@@ -55,12 +55,18 @@ class WaveAngleGenerator:
         >>> angles.next(samples=4)  # doctest: +SKIP
         array([-21.13885031,  54.71667679,  14.01299681, -14.24465549])
 
+        Define an angle distribution where there are no high angle (i.e.
+        no angles outside of -45 to 45 degrees).
+
         >>> angles = WaveAngleGenerator(asymmetry=0.5, high_fraction=0.0)
         >>> angles.pdf([-67.5, -22.5, 22.5, 67.5]) * 45.0
         array([0. , 0.5, 0.5, 0. ])
 
+        The cumulative distribution function is zero-valued from -90 to -45 degrees,
+        and then reaches one at 45 degrees.
+
         >>> angles.cdf([-90, -45, 0, 45, 90])
-        array([0. , 0.00833333, 0.50555556, 1. , 1. ])
+        array([0. , 0. , 0.5, 1. , 1. ])
         """
 
         if asymmetry < 0.0 or asymmetry > 1.0:
@@ -73,33 +79,34 @@ class WaveAngleGenerator:
         else:
             self._rng = rng
 
-        # x = np.array([-90.0, -45.0, 0.0, 45.0, 90])  # KA: to be equivalent to BRIE.m pdf, x=[-90.0, -45.0, 45.0, 90]
-        # f = np.array(
-        #     [
-        #         0.0,
-        #         asymmetry * high_fraction,
-        #         asymmetry * (1.0 - high_fraction),
-        #         (1.0 - asymmetry) * (1.0 - high_fraction),
-        #         (1.0 - asymmetry) * high_fraction,
-        #     ]
-        # ) / 45.0
+        x = np.array([-90.0, -45.0, 0.0, 45.0, 90])
+        f = (
+            np.array(
+                [
+                    0.0,
+                    asymmetry * high_fraction,
+                    asymmetry * (1.0 - high_fraction),
+                    (1.0 - asymmetry) * (1.0 - high_fraction),
+                    (1.0 - asymmetry) * high_fraction,
+                ]
+            )
+            * 4
+            / 180.0
+        )
 
-        res = np.ones(int(wave_climl/4))
-        x = np.linspace(-90.0, 90.0, wave_climl)  # wave angle resolution KA: best to have full (high) resolution for CDF
-        f = 4 * np.r_[
-            asymmetry * high_fraction * res,
-            asymmetry * (1.0 - high_fraction) * res,
-            (1.0 - asymmetry) * (1.0 - high_fraction) * res,
-            (1.0 - asymmetry) * high_fraction * res,
-        ] / wave_climl
-
-        # self._wave_pdf = interp1d(x, f, kind="next")
-        # self._wave_cdf = interp1d(x, np.cumsum(f) * 45.0)
-        # self._wave_inv_cdf = interp1d(np.cumsum(f) * 45.0, x)
-        self._wave_pdf = interp1d(x, f, kind="next")
-        self._wave_cdf = interp1d(x, np.cumsum(f))
-        self._wave_inv_cdf = interp1d(np.cumsum(f), x)
-        self._lower_bnd = np.min(np.cumsum(f))
+        self._wave_pdf = interp1d(x, f, kind="next", bounds_error=False, fill_value=0.0)
+        self._wave_cdf = interp1d(
+            x,
+            np.cumsum(f) * 180.0 / 4.0,
+            bounds_error=False,
+            fill_value=(0.0, 1.0),
+        )
+        self._wave_inv_cdf = interp1d(
+            np.cumsum(f) * 180.0 / 4.0,
+            x,
+            bounds_error=False,
+            fill_value=np.nan,
+        )
 
     def pdf(self, angle):
         """Probability distribution function for wave angle.
@@ -146,12 +153,13 @@ class WaveAngleGenerator:
         """
 
         # I don't want to extrapolate, so instead if the rng is below the interpolation bounds, I pick a new number
-        x = self._rng.random(samples)
+        # x = self._rng.random(samples)
 
-        while x < self._lower_bnd:
-            x = self._rng.random(samples)
+        # while x < self._lower_bnd:
+        #     x = self._rng.random(samples)
 
-        return np.floor(self._wave_inv_cdf(x))
+        return self._wave_inv_cdf(self._rng.random(samples))
+        # return np.floor(self._wave_inv_cdf(x))
 
 
 class Brie:
@@ -284,8 +292,10 @@ class Brie:
 
         # general parameters
         self._rho_w = sea_water_density
-        #self._g = scipy.constants.g
-        self._g = 9.81  # KA: above has too much precision for comparison to Matlab version
+        # self._g = scipy.constants.g
+        self._g = (
+            9.81  # KA: above has too much precision for comparison to Matlab version
+        )
 
         ###############################################################################
         # wave climate
@@ -364,7 +374,7 @@ class Brie:
             If provided, the current position of the shoreline [m].
         """
 
-        self._RNG = np.random.default_rng(seed=1973)    # random number generator
+        self._RNG = np.random.default_rng(seed=1973)  # random number generator
 
         ###############################################################################
         # shoreface and barrier model dependent variables
@@ -380,33 +390,33 @@ class Brie:
                 (18 * 1e-6)
                 + np.sqrt(0.75 * self._R * self._g * (self._grain_size ** 3))
             )
-        )   # settling velocity [m/s] Church & Ferguson (2004)
+        )  # settling velocity [m/s] Church & Ferguson (2004)
 
         phi = (
             16 * self._e_s * self._c_s / (15 * np.pi * self._R * self._g)
-        )   # phi from Ortiz and Ashton (2016)
+        )  # phi from Ortiz and Ashton (2016)
 
         self._z0 = (
             2 * self._wave_height / 0.78
-        )   # minimum depth of integration [m] (simple approx of breaking wave depth based on offshore wave height)
+        )  # minimum depth of integration [m] (simple approx of breaking wave depth based on offshore wave height)
 
         self._d_sf = (
             8.9 * self._wave_height
-        )   # depth shoreface [m], Hallermeier (1983) or  Houston (1995)
-            # alternatively 0.018*wave_height*wave_period*sqrt(g./(R*grain_size))
+        )  # depth shoreface [m], Hallermeier (1983) or  Houston (1995)
+        # alternatively 0.018*wave_height*wave_period*sqrt(g./(R*grain_size))
 
         self._k_sf = (
-                (3600 * 24 * 365)
-                / (self._d_sf - self._z0)
-                * (
-                        self._g ** (15 / 4)
-                        * self._wave_height ** 5
-                        * phi
-                        * self._wave_period ** (5 / 2)
-                        / (1024 * np.pi ** (5 / 2) * w_s ** 2)
-                        * (4 / 11 * (1 / self._z0 ** (11 / 4) - 1 / (self._d_sf ** (11 / 4))))
-                )
-        )   # shoreface response rate [m^3/m/yr], Lorenzo-Trueba & Ashton (2014) or Ortiz and Ashton (2016)
+            (3600 * 24 * 365)
+            / (self._d_sf - self._z0)
+            * (
+                self._g ** (15 / 4)
+                * self._wave_height ** 5
+                * phi
+                * self._wave_period ** (5 / 2)
+                / (1024 * np.pi ** (5 / 2) * w_s ** 2)
+                * (4 / 11 * (1 / self._z0 ** (11 / 4) - 1 / (self._d_sf ** (11 / 4))))
+            )
+        )  # shoreface response rate [m^3/m/yr], Lorenzo-Trueba & Ashton (2014) or Ortiz and Ashton (2016)
 
         self._s_sf_eq = (
             3
@@ -414,11 +424,11 @@ class Brie:
             / 4
             / np.sqrt(self._d_sf * self._g)
             * (5 + 3 * self._wave_period ** 2 * self._g / 4 / (np.pi ** 2) / self._d_sf)
-        )   # equilibrium shoreface slope
+        )  # equilibrium shoreface slope
 
         self._x_t = (self._z - self._d_sf) / self._s_background + np.zeros(
             self._ny
-        )   # position shoreface toe [m]
+        )  # position shoreface toe [m]
 
         # KA - used for testing/debugging brie.py vs. brie.m
         if self._bseed:
@@ -429,12 +439,12 @@ class Brie:
         else:
             self._x_s = (
                 self._RNG.random(self._ny) + self._d_sf / self._s_sf_eq + self._x_t
-            )   # position shoreline [m]
+            )  # position shoreline [m]
             # self._x_s = np.random.rand(self._ny) + self._d_sf / self._s_sf_eq + self._x_t  # position shoreline [m]
 
         self._x_b = (
             self._d_sf / self._s_sf_eq + self._w_b_crit + self._x_t
-        )   # position back barrier [m]
+        )  # position back barrier [m]
 
         self._h_b = 2 + np.zeros(self._ny)  # height barrier [m]
         self._barrier_volume = np.array([])
@@ -444,8 +454,12 @@ class Brie:
         ###############################################################################
 
         self._inlet_idx_close_mat = np.array([])
-        self._inlet_idx = ([])  # KA: originally a matlab cell, here a list that is appended after first time step
-        self._inlet_idx_mat = np.array([]).astype(float)  # KA: we use this variable for NaN operations
+        self._inlet_idx = (
+            []
+        )  # KA: originally a matlab cell, here a list that is appended after first time step
+        self._inlet_idx_mat = np.array([]).astype(
+            float
+        )  # KA: we use this variable for NaN operations
         self._inlet_y = np.zeros(self._ny)
         self._y = np.arange(
             100, self._dy * self._ny, self._dy
@@ -453,17 +467,15 @@ class Brie:
 
         self._angle_array = np.deg2rad(
             np.linspace(-90.0, 90.0, self._wave_climl)
-        )   # array of resolution angles for wave climate [radians]
+        )  # array of resolution angles for wave climate [radians]
 
         self._angles = WaveAngleGenerator(
-            asymmetry = self._wave_asym,
-            high_fraction = self._wave_high,
-            wave_climl = self._wave_climl,
+            asymmetry=self._wave_asym,
+            high_fraction=self._wave_high,
+            wave_climl=self._wave_climl,
         )  # wave angle generator for each time step for calculating Qs_in
 
-        wave_pdf = self._angles.pdf(
-            np.rad2deg(self._angle_array)
-        )  # wave climate pdf
+        wave_pdf = self._angles.pdf(np.rad2deg(self._angle_array))  # wave climate pdf
 
         self._coast_qs = (
             self._wave_height ** 2.4
@@ -478,7 +490,7 @@ class Brie:
 
         self._u_e_star = self._u_e / np.sqrt(
             self._g * self._a0
-        )   # equilibrium inlet velocity (non-dimensional)
+        )  # equilibrium inlet velocity (non-dimensional)
 
         ###############################################################################
         # shoreline change dependent variables
@@ -488,18 +500,25 @@ class Brie:
         # dependence of diffusivity using a nonlinear term from AM06 (Eq. 37-39 in the BRIE), and convolve it with the
         # wave climate pdf (the normalized angular distribution of wave energy) to get a wave-climate averaged shoreline
         # diffusivity for every alongshore location
-        diff = -(
+        diff = (
+            -(
                 self._k
                 / (self._h_b_crit + self._d_sf)
                 * self._wave_height ** 2.4
-                * self._wave_period ** 0.2) * 365 * 24 * 3600 * (np.cos(self._angle_array) ** 0.2) * \
-               (1.2 * np.sin(self._angle_array) ** 2 - np.cos(self._angle_array) ** 2)
+                * self._wave_period ** 0.2
+            )
+            * 365
+            * 24
+            * 3600
+            * (np.cos(self._angle_array) ** 0.2)
+            * (1.2 * np.sin(self._angle_array) ** 2 - np.cos(self._angle_array) ** 2)
+        )
 
         # KA NOTE: the "same" method differs in Matlab and Numpy; here we pad and slice out the "same" equivalent
         conv = np.convolve(wave_pdf, diff, mode="full")
         npad = len(diff) - 1
         first = npad - npad // 2
-        self._coast_diff = conv[first:first + len(wave_pdf)]
+        self._coast_diff = conv[first : first + len(wave_pdf)]
 
         self._di = (
             np.r_[
@@ -510,7 +529,7 @@ class Brie:
                 1,
             ]
             - 1
-        )   # timestepping implicit diffusion equation (KA: -1 for python indexing)
+        )  # timestepping implicit diffusion equation (KA: -1 for python indexing)
 
         self._dj = (
             np.r_[
@@ -530,15 +549,11 @@ class Brie:
         self._t = np.arange(
             self._dt, (self._dt * self._nt) + self._dt, self._dt
         )  # time array
-        self._Qoverwash = np.float32(
-            np.zeros(int(self._nt))
-        )   # overwash flux [m^3/yr]
+        self._Qoverwash = np.float32(np.zeros(int(self._nt)))  # overwash flux [m^3/yr]
         self._Qshoreface = np.float32(
             np.zeros(int(self._nt))
-        )   # KA: new variable for time series of shoreface flux [m^3/yr]
-        self._Qinlet = np.float32(
-            np.zeros(int(self._nt))
-        )   # inlet flux [m^3/yr]
+        )  # KA: new variable for time series of shoreface flux [m^3/yr]
+        self._Qinlet = np.float32(np.zeros(int(self._nt)))  # inlet flux [m^3/yr]
         self._inlet_age = []
         # KA: changed the saving arrays from matlab version to enable saving every time step in python, e.g., now if I
         # use the default dtsave=1000, the first value in these arrays (i.e., [0]) are the initial conditions and the
@@ -573,7 +588,9 @@ class Brie:
         self._x_t_save = np.int32(
             np.zeros((self._ny, np.size(np.arange(0, self._nt, self._dtsave))))
         )
-        self._x_t_save[:, 0] = (
+        self._x_t_save[
+            :, 0
+        ] = (
             self._x_t
         )  # KA: for some reason this rounds down to 1099 and not up to 1100...why?
         self._x_s_save = np.int32(
@@ -592,7 +609,9 @@ class Brie:
             np.zeros((self._ny, np.size(np.arange(0, self._nt, self._dtsave))))
         )
         # self._s_sf_save[:, 0] = self._s_sf_eq
-        self._s_sf_save[:, 0] = self._d_sf / (self._x_s - self._x_t)  # added by KA to represent the actual initial s_sf
+        self._s_sf_save[:, 0] = self._d_sf / (
+            self._x_s - self._x_t
+        )  # added by KA to represent the actual initial s_sf
 
         # initialize empty arrays for barrier model (added by KA for coupling)
         self._x_t_dt = np.zeros(self._ny)
