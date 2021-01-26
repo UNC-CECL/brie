@@ -237,7 +237,7 @@ class Brie:
             Density of sea water [kg/m^3].
         tide_amplitude: float, optional
             Amplitude of tide [m].
-        tide_frequence: float, optional
+        tide_frequency: float, optional
             Tidal frequency [rad/s].
         back_barrier_marsh_fraction: float, optional
             Percent of backbarrier covered by marsh and does not contribute to tidal prism.
@@ -288,7 +288,7 @@ class Brie:
 
         # general parameters
         self._rho_w = sea_water_density
-        #self._g = scipy.constants.g
+        # self._g = scipy.constants.g
         self._g = 9.81  # KA: above has too much precision for comparison to Matlab version
 
         ###############################################################################
@@ -917,7 +917,7 @@ class Brie:
         if self._inlet_model_on:
 
             # array for changes to back barrier due to flood tidal deltas
-            x_b_fld_dt = np.zeros(int(self._ny))
+            self._x_b_fld_dt = np.zeros(int(self._ny))
 
             # KA, note this was originally empty
             # barrier volume is barrier width times height + estimated inlet depth
@@ -1124,7 +1124,7 @@ class Brie:
                     new_inlet_idx = np.mod(
                         self._new_inlet + np.r_[1 : (wi_cell[j - 1] + 1)] - 1, self._ny
                     )
-                    x_b_fld_dt[new_inlet_idx] = x_b_fld_dt[new_inlet_idx] + (
+                    self._x_b_fld_dt[new_inlet_idx] = self._[new_inlet_idx] + (
                         (self._h_b[self._new_inlet] + di_eq[j - 1]) * w[self._new_inlet]
                     ) / (d_b[self._new_inlet])
 
@@ -1228,7 +1228,7 @@ class Brie:
                     inlet_prv[j - 1], self._inlet_idx[j - 1], inlet_nex[j - 1]
                 ]
 
-                x_b_fld_dt[temp_idx] = x_b_fld_dt[temp_idx] + fld_delta / (
+                self._x_b_fld_dt[temp_idx] = self._x_b_fld_dt[temp_idx] + fld_delta / (
                     np.size(temp_idx) * self._dy
                 ) / (self._h_b[temp_idx] + d_b[temp_idx])
 
@@ -1329,7 +1329,7 @@ class Brie:
             # delta = 0
             # delta_r = 0
             # inlet_sink = 0
-            x_b_fld_dt = 0
+            self._x_b_fld_dt = 0
 
         # do implicit thing (updated on May 27, 2020 to force shoreline diffusivity to be greater than zero)
         if self._ast_model_on:
@@ -1373,7 +1373,7 @@ class Brie:
 
         # how are the other moving boundaries changing?
         self._x_t = self._x_t + self._x_t_dt
-        self._x_b = self._x_b + self._x_b_dt + x_b_fld_dt
+        self._x_b = self._x_b + self._x_b_dt + self._x_b_fld_dt
         self._h_b = self._h_b + self._h_b_dt
 
         # save subset of BRIE variables (KA: I changed this from mod = 1 to mod = 0 to allow for saving every 1 timestep)
