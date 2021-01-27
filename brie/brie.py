@@ -39,7 +39,6 @@ class BrieError(Exception):
 class WaveAngleGenerator:
     def __init__(self, asymmetry=0.8, high_fraction=0.2, wave_climl=180, rng=None):
         """Generate incoming wave angles.
-
         Parameters
         ----------
         asymmetry: float, optional
@@ -48,23 +47,23 @@ class WaveAngleGenerator:
         high_fraction: float, optional
             Fraction of waves approaching at angles higher than 45 degrees from shore normal (Ashton & Murray, 2006).
             Value typically 0.2 in BRIE.
-
         Examples
         --------
         >>> from brie.brie import WaveAngleGenerator
         >>> angles = WaveAngleGenerator()
         >>> angles.next()  # doctest: +SKIP
         array([14.97622633])
-
         >>> angles.next(samples=4)  # doctest: +SKIP
         array([-21.13885031,  54.71667679,  14.01299681, -14.24465549])
-
+        Define an angle distribution where there are no high angle (i.e.
+        no angles outside of -45 to 45 degrees).
         >>> angles = WaveAngleGenerator(asymmetry=0.5, high_fraction=0.0)
         >>> angles.pdf([-67.5, -22.5, 22.5, 67.5]) * 45.0
         array([0. , 0.5, 0.5, 0. ])
-
+        The cumulative distribution function is zero-valued from -90 to -45 degrees,
+        and then reaches one at 45 degrees.
         >>> angles.cdf([-90, -45, 0, 45, 90])
-        array([0. , 0.00833333, 0.50555556, 1. , 1. ])
+        array([0. , 0. , 0.5, 1. , 1. ])
         """
 
         if asymmetry < 0.0 or asymmetry > 1.0:
@@ -77,42 +76,41 @@ class WaveAngleGenerator:
         else:
             self._rng = rng
 
-        # x = np.array([-90.0, -45.0, 0.0, 45.0, 90])  # KA: to be equivalent to BRIE.m pdf, x=[-90.0, -45.0, 45.0, 90]
-        # f = np.array(
-        #     [
-        #         0.0,
-        #         asymmetry * high_fraction,
-        #         asymmetry * (1.0 - high_fraction),
-        #         (1.0 - asymmetry) * (1.0 - high_fraction),
-        #         (1.0 - asymmetry) * high_fraction,
-        #     ]
-        # ) / 45.0
+        x = np.array([-90.0, -45.0, 0.0, 45.0, 90])
+        f = (
+            np.array(
+                [
+                    0.0,
+                    asymmetry * high_fraction,
+                    asymmetry * (1.0 - high_fraction),
+                    (1.0 - asymmetry) * (1.0 - high_fraction),
+                    (1.0 - asymmetry) * high_fraction,
+                ]
+            )
+            * 4
+            / 180.0
+        )
 
-        res = np.ones(int(wave_climl/4))
-        x = np.linspace(-90.0, 90.0, wave_climl)  # wave angle resolution KA: best to have full (high) resolution for CDF
-        f = 4 * np.r_[
-            asymmetry * high_fraction * res,
-            asymmetry * (1.0 - high_fraction) * res,
-            (1.0 - asymmetry) * (1.0 - high_fraction) * res,
-            (1.0 - asymmetry) * high_fraction * res,
-        ] / wave_climl
-
-        # self._wave_pdf = interp1d(x, f, kind="next")
-        # self._wave_cdf = interp1d(x, np.cumsum(f) * 45.0)
-        # self._wave_inv_cdf = interp1d(np.cumsum(f) * 45.0, x)
-        self._wave_pdf = interp1d(x, f, kind="next")
-        self._wave_cdf = interp1d(x, np.cumsum(f))
-        self._wave_inv_cdf = interp1d(np.cumsum(f), x)
-        self._lower_bnd = np.min(np.cumsum(f))
+        self._wave_pdf = interp1d(x, f, kind="next", bounds_error=False, fill_value=0.0)
+        self._wave_cdf = interp1d(
+            x,
+            np.cumsum(f) * 180.0 / 4.0,
+            bounds_error=False,
+            fill_value=(0.0, 1.0),
+        )
+        self._wave_inv_cdf = interp1d(
+            np.cumsum(f) * 180.0 / 4.0,
+            x,
+            bounds_error=False,
+            fill_value=np.nan,
+        )
 
     def pdf(self, angle):
         """Probability distribution function for wave angle.
-
         Parameters
         ----------
         angle: number or ndarray
             Angle(s) at which to evaluate the pdf [degree].
-
         Returns
         -------
         ndarray of float
@@ -122,12 +120,10 @@ class WaveAngleGenerator:
 
     def cdf(self, angle):
         """Cumulative distribution function for wave angle.
-
         Parameters
         ----------
         angle: number or ndarray
             Angle(s) at which to evaluate the cdf [degree].
-
         Returns
         -------
         ndarray of float
@@ -137,12 +133,10 @@ class WaveAngleGenerator:
 
     def next(self, samples=1):
         """Next wave angles from the distribution.
-
         Parameters
         ----------
         samples : int
             Number of wave angles to return.
-
         Returns
         -------
         ndarray of float
@@ -150,12 +144,13 @@ class WaveAngleGenerator:
         """
 
         # I don't want to extrapolate, so instead if the rng is below the interpolation bounds, I pick a new number
-        x = self._rng.random(samples)
+        # x = self._rng.random(samples)
 
-        while x < self._lower_bnd:
-            x = self._rng.random(samples)
+        # while x < self._lower_bnd:
+        #     x = self._rng.random(samples)
 
-        return np.floor(self._wave_inv_cdf(x))
+        return self._wave_inv_cdf(self._rng.random(samples))
+        # return np.floor(self._wave_inv_cdf(x))
 
 
 class Brie:
