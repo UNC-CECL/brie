@@ -7,11 +7,11 @@ from scipy.sparse import csr_matrix
 from brie.alongshore_transporter import (
     _build_matrix,
     _build_tridiagonal_matrix,
-    calc_alongshore_transport,
     calc_alongshore_transport_k,
-    calc_coast_diff,
+    calc_coast_diffusivity,
     calc_coast_qs,
     calc_shoreline_angles,
+    calc_inlet_alongshore_transport
 )
 
 
@@ -34,7 +34,7 @@ def old_calc_coast_qs(wave_angle, wave_height=1.0, wave_period=10.0):
     )  # [m3/yr]
 
 
-def old_calc_alongshore_transport(
+def old_calc_inlet_alongshore_transport(
     wave_angle, shoreline_angle=0.0, wave_height=1.0, wave_period=10.0
 ):
     dt = 1.0
@@ -73,47 +73,54 @@ def old_calc_alongshore_transport(
     return q_s
 
 
-def old_calc_coast_diff(
+def old_calc_coast_diffusivity(
     wave_pdf, shoreline_angles, wave_height=1.0, wave_period=10.0, h_b_crit=2.0
 ):
     wave_climl = 180
-    # angle_array = np.deg2rad(np.linspace(-90.0, 90.0, wave_climl + 1))
-    angle_array, step = np.linspace(-90.0, 90.0, wave_climl + 1, retstep=True)
+    # angle_array, step = np.linspace(-90.0, 90.0, wave_climl + 1, retstep=True)
+    angle_array, step = np.linspace(-89.5, 89.5, 180, retstep=True)
     angle_array = np.deg2rad(angle_array)
 
     d_sf = 8.9 * wave_height
 
-    coast_diff = np.convolve(
-        wave_pdf(angle_array) * np.deg2rad(step),
-        -(
-            calc_alongshore_transport_k()
-            / (h_b_crit + d_sf)
-            * wave_height ** 2.4
-            * wave_period ** 0.2
-        )
-        * 365
-        * 24
-        * 3600
-        * (np.cos(angle_array) ** 0.2)
-        * (1.2 * np.sin(angle_array) ** 2 - np.cos(angle_array) ** 2),
-        mode="same",
+    diff = (
+            -(
+                    calc_alongshore_transport_k()
+                    / (h_b_crit + d_sf)
+                    * wave_height ** 2.4
+                    * wave_period ** 0.2
+            )
+            * 365
+            * 24
+            * 3600
+            * (np.cos(angle_array) ** 0.2)
+            * (1.2 * np.sin(angle_array) ** 2 - np.cos(angle_array) ** 2)
     )
+
+    # KA NOTE: the "same" method differs in Matlab and Numpy; here we pad and slice out the "same" equivalent
+    # conv = np.convolve(waves.pdf(np.deg2rad(angle_array)) * np.deg2rad(step), diff, mode="full")
+    conv = np.convolve(wave_pdf(angle_array) * np.deg2rad(step), diff, mode="full")
+    npad = len(diff) - 1
+    first = npad - npad // 2
+    coast_diff_phi0_theta = conv[first: first + len(angle_array)]
 
     theta = np.rad2deg(shoreline_angles)
 
-    return coast_diff[
+    coast_diff = coast_diff_phi0_theta[
         np.maximum(
             0,
             np.minimum(wave_climl + 1, np.round(90 - theta).astype(int)),
         )
-    ]
+    ]  # is this the relative wave angle? note that this indexing doesn't work with bounds other than [-90,90]
+    # so this coast_diff differs from the result of our interpolation in AlongshoreTransporter. It should work once we
+    # implement the Ashton distribution
 
+    return coast_diff, coast_diff_phi0_theta
 
-def old_build_matrix(x_s, wave_distribution, dy=1.0, wave_height=1.0, wave_period=10.0):
+def old_build_matrix(x_s, wave_distribution, dy=1.0, wave_height=1.0, wave_period=10.0, dt=1.0, x_s_dt=0):
 
     wave_climl = 180
     ny = len(x_s)
-    dt = 1.0
     h_b_crit = 2.0
 
     di = (
@@ -139,26 +146,32 @@ def old_build_matrix(x_s, wave_distribution, dy=1.0, wave_height=1.0, wave_perio
 
     theta = np.rad2deg(old_calc_shoreline_angles(x_s, spacing=dy))
 
-    angle_array, step = np.linspace(-90.0, 90.0, wave_climl + 1, retstep=True)
+    # angle_array, step = np.linspace(-90.0, 90.0, wave_climl + 1, retstep=True)
+    # angle_array = np.deg2rad(angle_array)
+    angle_array, step = np.linspace(-89.5, 89.5, 180, retstep=True)
     angle_array = np.deg2rad(angle_array)
 
     d_sf = 8.9 * wave_height
 
-    coast_diff = np.convolve(
-        wave_distribution.pdf(angle_array) * np.deg2rad(step),
-        -(
-            calc_alongshore_transport_k()
-            / (h_b_crit + d_sf)
-            * wave_height ** 2.4
-            * wave_period ** 0.2
-        )
-        * 365
-        * 24
-        * 3600
-        * (np.cos(angle_array) ** 0.2)
-        * (1.2 * np.sin(angle_array) ** 2 - np.cos(angle_array) ** 2),
-        mode="same",
+    diff=(
+            -(
+                    calc_alongshore_transport_k()
+                    / (h_b_crit + d_sf)
+                    * wave_height ** 2.4
+                    * wave_period ** 0.2
+            )
+            * 365
+            * 24
+            * 3600
+            * (np.cos(angle_array) ** 0.2)
+            * (1.2 * np.sin(angle_array) ** 2 - np.cos(angle_array) ** 2)
     )
+
+    # KA NOTE: the "same" method differs in Matlab and Numpy; here we pad and slice out the "same" equivalent
+    conv = np.convolve(wave_distribution.pdf(angle_array) * np.deg2rad(step), diff, mode="full")
+    npad = len(diff) - 1
+    first = npad - npad // 2
+    coast_diff = conv[first: first + len(angle_array)]
 
     r_ipl = np.maximum(
         0,
@@ -180,8 +193,13 @@ def old_build_matrix(x_s, wave_distribution, dy=1.0, wave_height=1.0, wave_perio
 
     RHS = (
         x_s
-        + r_ipl * (x_s[np.r_[1:ny, 0]] - 2 * x_s + x_s[np.r_[ny - 1, 0 : ny - 1]])
-        # + self._x_s_dt
+        + r_ipl
+        * (
+                x_s[np.r_[1:ny, 0]]
+                - 2 * x_s
+                + x_s[np.r_[ny - 1, 0 : ny - 1]]
+        )
+        + x_s_dt  # I think this was dropped just for testing
     )
 
     return A, RHS, r_ipl
@@ -221,14 +239,14 @@ def old_build_tridiag(data):
 
 @pytest.mark.parametrize("angle", (60, 45, 30, 0, -30, -45, -60.0))
 @pytest.mark.parametrize("shoreline_angle", (-15, 0, 15))
-def test_alongshore_transport_old_to_new(angle, shoreline_angle):
+def test_inlet_alongshore_transport_old_to_new(angle, shoreline_angle):
     angle = np.deg2rad(angle)
     shoreline_angle = np.deg2rad(shoreline_angle)
     assert_array_almost_equal(
-        old_calc_alongshore_transport(
+        old_calc_inlet_alongshore_transport(
             angle, shoreline_angle=np.full(5, shoreline_angle)
         ),
-        calc_alongshore_transport(angle, shoreline_angle=np.full(5, shoreline_angle)),
+        calc_inlet_alongshore_transport(angle, shoreline_angle=np.full(5, shoreline_angle)),
     )
 
 
@@ -324,7 +342,7 @@ def test_calc_coast_qs_wave_period(func):
 
 
 @pytest.mark.parametrize(
-    "func", (calc_alongshore_transport, old_calc_alongshore_transport)
+    "func", (calc_inlet_alongshore_transport, old_calc_inlet_alongshore_transport)
 )
 def test_alongshore_transport(func):
     # angles = np.random.uniform(low=-np.pi / 2.0, high=np.pi / 2.0, size=50)
@@ -339,7 +357,7 @@ def test_alongshore_transport(func):
 
 @pytest.mark.parametrize("shoreline_angle", (-15, 0, 15))
 @pytest.mark.parametrize(
-    "func", (calc_alongshore_transport, old_calc_alongshore_transport)
+    "func", (calc_inlet_alongshore_transport, old_calc_inlet_alongshore_transport)
 )
 def test_alongshore_transport_shoreline_angle(func, shoreline_angle):
     shoreline_angle = np.deg2rad(shoreline_angle)
@@ -350,7 +368,7 @@ def test_alongshore_transport_shoreline_angle(func, shoreline_angle):
 
 
 @pytest.mark.parametrize(
-    "func", (calc_alongshore_transport, old_calc_alongshore_transport)
+    "func", (calc_inlet_alongshore_transport, old_calc_inlet_alongshore_transport)
 )
 def test_alongshore_transport_normal_waves(func):
     assert func(np.pi / 4.0, shoreline_angle=np.pi / 4.0) == pytest.approx(0.0)
@@ -361,7 +379,7 @@ def test_alongshore_transport_normal_waves(func):
 
 
 @pytest.mark.parametrize(
-    "func", (calc_alongshore_transport, old_calc_alongshore_transport)
+    "func", (calc_inlet_alongshore_transport, old_calc_inlet_alongshore_transport)
 )
 def test_alongshore_transport_symmetrical(func):
     angles = np.random.uniform(low=-np.pi / 2.0, high=np.pi / 2.0, size=50)
@@ -371,7 +389,7 @@ def test_alongshore_transport_symmetrical(func):
 
 
 @pytest.mark.parametrize(
-    "func", (calc_alongshore_transport, old_calc_alongshore_transport)
+    "func", (calc_inlet_alongshore_transport, old_calc_inlet_alongshore_transport)
 )
 def test_alongshore_transport_to_the_left(func):
     angles = np.random.uniform(low=0.0, high=np.pi / 2.0, size=50)
@@ -383,7 +401,7 @@ def test_alongshore_transport_to_the_left(func):
 
 
 @pytest.mark.parametrize(
-    "func", (calc_alongshore_transport, old_calc_alongshore_transport)
+    "func", (calc_inlet_alongshore_transport, old_calc_inlet_alongshore_transport)
 )
 def test_alongshore_transport_to_the_right(func):
     angles = np.random.uniform(low=-np.pi / 2.0, high=0.0, size=50)
@@ -392,7 +410,7 @@ def test_alongshore_transport_to_the_right(func):
 
 
 @pytest.mark.parametrize(
-    "func", (calc_alongshore_transport, old_calc_alongshore_transport)
+    "func", (calc_inlet_alongshore_transport, old_calc_inlet_alongshore_transport)
 )
 def test_alongshore_transport_parallel(func):
     angles = np.random.uniform(low=-np.pi / 2.0, high=-np.pi / 4.0, size=50)
@@ -409,24 +427,28 @@ def test_alongshore_transport_parallel(func):
 @pytest.mark.parametrize("angle", (-75, -60, -45, -30, -15, 0, 15, 30, 45, 60, 75))
 def test_coast_diff_old_to_new(angle):
     dist = scipy.stats.uniform(loc=-np.pi / 2.0, scale=np.pi)
-    assert calc_coast_diff(dist.pdf, np.deg2rad(angle)) == pytest.approx(
-        old_calc_coast_diff(dist.pdf, np.deg2rad(angle))
-    )
+    coast_diff, dummy1 = calc_coast_diffusivity(dist.pdf, np.deg2rad(angle))
+    old_coast_diff, dummy2 = old_calc_coast_diffusivity(dist.pdf, np.deg2rad(angle))
+    assert coast_diff == pytest.approx(old_coast_diff)
 
 
-@pytest.mark.parametrize("func", (calc_coast_diff, old_calc_coast_diff))
+@pytest.mark.parametrize("func", (calc_coast_diffusivity, old_calc_coast_diffusivity))
 @pytest.mark.parametrize("angle", (-75, -60, -45, -30, -15, 0, 15, 30, 45, 60, 75))
 def test_coast_diff_uniform_always_positive(func, angle):
     dist = scipy.stats.uniform(loc=-np.pi / 2.0, scale=np.pi)
-    qs = func(dist.pdf, np.deg2rad(angle))
+    qs, dummy = func(dist.pdf, np.deg2rad(angle))
     assert qs > 0.0
 
 
-@pytest.mark.parametrize("func", (calc_coast_diff, old_calc_coast_diff))
+@pytest.mark.parametrize("func", (calc_coast_diffusivity, old_calc_coast_diffusivity))
 def test_coast_diff_symmetrical(func):
     dist = scipy.stats.uniform(loc=-np.pi / 2.0, scale=np.pi)
-    angles = np.random.uniform(low=-np.pi / 2.0, high=np.pi / 2.0, size=500)
-    assert_array_almost_equal(func(dist.pdf, angles), func(dist.pdf, -angles))
+    #angles = np.random.uniform(low=-np.pi / 2.0, high=np.pi / 2.0, size=500)
+    angles = np.linspace(-89.5, 89.5, 180)
+    angles = np.deg2rad(angles)
+    diff_pos, dummy = func(dist.pdf, angles)
+    diff_neg, dummy = func(dist.pdf, -angles)
+    assert_array_almost_equal(diff_pos, diff_neg)
 
 
 def test_build_matrix():

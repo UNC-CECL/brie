@@ -1,17 +1,22 @@
 import numpy as np
+import scipy.constants
 import yaml
 from numpy.lib.scimath import power as cpower, sqrt as csqrt
+from scipy.interpolate import interp1d
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import spsolve
 
 from .alongshore_transporter import calc_alongshore_transport_k
 from .waves import WaveAngleGenerator
 
-
 def inlet_fraction(self, a, b, c, d, I):
     """what are the inlet fractions"""
     return a + (b / (1 + c * (I ** d)))
 
+SECONDS_PER_YEAR = 3600.0 * 24.0 * 365.0
+
+class BrieError(Exception):
+    pass
 
 class Brie:
     def __init__(
@@ -156,7 +161,7 @@ class Brie:
         self._wave_period = wave_period
         self._wave_asym = wave_asymmetry
         self._wave_high = wave_angle_high_fraction
-        self._wave_angle = 0.0  # the default initial wave angle
+        self._wave_angle = wave_angle  # the default initial wave angle
 
         # alongshore distribution of wave energy
         self._wave_climl = int(180.0 / wave_angle_resolution)
@@ -290,7 +295,7 @@ class Brie:
             if xs is None or wave_angle is None:
                 raise ValueError("if bseed is True, xs and wave_angle must be provided")
             self._x_s = xs
-            self._wave_angle = wave_angle
+            # self._wave_angle = wave_angle
         else:
             self._x_s = (
                 self._RNG.random(self._ny) + self._d_sf / self._s_sf_eq + self._x_t
@@ -327,6 +332,7 @@ class Brie:
         self._angles = WaveAngleGenerator(
             asymmetry=self._wave_asym,
             high_fraction=self._wave_high,
+            wave_climl=self._wave_climl,
         )  # wave angle generator for each time step for calculating Qs_in
 
         wave_pdf = self._angles.pdf(np.rad2deg(self._angle_array))  # wave climate pdf
@@ -350,29 +356,29 @@ class Brie:
         # shoreline change dependent variables
         ###############################################################################
 
-        # shoreline change is NOT calculated using a single wave angle (as in Qs_in); instead, we account for the angle
-        # dependence of diffusivity using a nonlinear term from AM06 (Eq. 37-39 in the BRIE), and convolve it with the
-        # wave climate pdf (the normalized angular distribution of wave energy) to get a wave-climate averaged shoreline
-        # diffusivity for every alongshore location
-        diff = (
-            -(
-                self._k
-                / (self._h_b_crit + self._d_sf)
-                * self._wave_height ** 2.4
-                * self._wave_period ** 0.2
-            )
-            * 365
-            * 24
-            * 3600
-            * (np.cos(self._angle_array) ** 0.2)
-            * (1.2 * np.sin(self._angle_array) ** 2 - np.cos(self._angle_array) ** 2)
-        )
-
-        # KA NOTE: the "same" method differs in Matlab and Numpy; here we pad and slice out the "same" equivalent
-        conv = np.convolve(wave_pdf, diff, mode="full")
-        npad = len(diff) - 1
-        first = npad - npad // 2
-        self._coast_diff = conv[first : first + len(wave_pdf)]
+        # # shoreline change is NOT calculated using a single wave angle (as in Qs_in); instead, we account for the angle
+        # # dependence of diffusivity using a nonlinear term from AM06 (Eq. 37-39 in the BRIE), and convolve it with the
+        # # wave climate pdf (the normalized angular distribution of wave energy) to get a wave-climate averaged shoreline
+        # # diffusivity for every alongshore location
+        # diff = (
+        #     -(
+        #         self._k
+        #         / (self._h_b_crit + self._d_sf)
+        #         * self._wave_height ** 2.4
+        #         * self._wave_period ** 0.2
+        #     )
+        #     * 365
+        #     * 24
+        #     * 3600
+        #     * (np.cos(self._angle_array) ** 0.2)
+        #     * (1.2 * np.sin(self._angle_array) ** 2 - np.cos(self._angle_array) ** 2)
+        # )
+        #
+        # # KA NOTE: the "same" method differs in Matlab and Numpy; here we pad and slice out the "same" equivalent
+        # conv = np.convolve(wave_pdf, diff, mode="full")
+        # npad = len(diff) - 1
+        # first = npad - npad // 2
+        # self._coast_diff = conv[first : first + len(wave_pdf)]
 
         self._di = (
             np.r_[
@@ -558,16 +564,6 @@ class Brie:
         self._h_b = value
 
     @property
-    def wave_angle(self):
-        return self._wave_angle
-
-    @wave_angle.setter
-    def wave_angle(self, new_angle):
-        if new_angle > 90.0 or new_angle < -90:
-            raise ValueError("wave angle must be between -90 and 90 degrees")
-        self._wave_angle = new_angle
-
-    @property
     def h_b_save(self):
         return self._h_b_save
 
@@ -590,6 +586,17 @@ class Brie:
     @property
     def s_sf_eq(self):
         return self._s_sf_eq
+
+    @property
+    def wave_angle(self):
+        return self._wave_angle
+
+    @wave_angle.setter
+    def wave_angle(self, new_angle):
+        if new_angle > 90.0 or new_angle < -90:
+            raise ValueError("wave angle must be between -90 and 90 degrees")
+        self._wave_angle = new_angle
+
 
     def u(self, a_star, gam, ah_star):
         """new explicit relationship between boundary conditions and inlet area"""
@@ -762,37 +769,34 @@ class Brie:
                 / np.pi
             )
 
-            wave_ang = self._wave_angle
             # wave direction
+            wave_ang = self._wave_angle
             if self._bseed:
                 wave_ang = self._wave_angle[self._time_index - 1]
-
+            #
             # else:
             #     # wave_ang = np.nonzero(self._wave_cdf > np.random.rand())[0][] # just get the first nonzero element
             #     wave_ang = int(self._angles.next())  # KA: use the wave generator!
 
             # sed transport this timestep for given wave angle (KA: NOTE, -1 indexing is for Python)
-            try:
-                Qs = (
-                    self._dt
-                    * self._coast_qs[
-                        np.minimum(
-                            self._wave_climl,
-                            np.maximum(
-                                1,
-                                np.round(
-                                    self._wave_climl
-                                    - wave_ang
-                                    - (self._wave_climl / 180 * theta)
-                                    + 1
-                                ),
+            Qs = (
+                self._dt
+                * self._coast_qs[
+                    np.minimum(
+                        self._wave_climl,
+                        np.maximum(
+                            1,
+                            np.round(
+                                self._wave_climl
+                                - wave_ang
+                                - (self._wave_climl / 180 * theta)
+                                + 1
                             ),
-                        ).astype(int)
-                        - 1
-                    ]
-                ).astype(float)
-            except ValueError:
-                raise ValueError((self._wave_climl, wave_ang.shape, theta))
+                        ),
+                    ).astype(int)
+                    - 1
+                ]
+            ).astype(float)
 
         if self._inlet_model_on:
 
@@ -1004,13 +1008,9 @@ class Brie:
                     new_inlet_idx = np.mod(
                         self._new_inlet + np.r_[1 : (wi_cell[j - 1] + 1)] - 1, self._ny
                     )
-                    self._x_b_fld_dt[new_inlet_idx] = self._x_b_fld_dt[
-                        new_inlet_idx
-                    ] + (
+                    self._x_b_fld_dt[new_inlet_idx] = self._[new_inlet_idx] + (
                         (self._h_b[self._new_inlet] + di_eq[j - 1]) * w[self._new_inlet]
-                    ) / (
-                        d_b[self._new_inlet]
-                    )
+                    ) / (d_b[self._new_inlet])
 
                     self._Qinlet[self._time_index - 1] = self._Qinlet[
                         self._time_index - 1
