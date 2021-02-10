@@ -1,6 +1,4 @@
-numpy~=1.19.4
-scipy~=1.5.4
-
-joblib~=0.17.0
-setuptools~=50.3.2
+numpy
+scipy
 bmipy
+pyyaml
