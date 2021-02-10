@@ -6,164 +6,13 @@ from scipy.interpolate import interp1d
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import spsolve
 
+from .alongshore_transporter import calc_alongshore_transport_k
+
 
 def inlet_fraction(self, a, b, c, d, I):
     """what are the inlet fractions"""
     return a + (b / (1 + c * (I ** d)))
 
-
-def calc_alongshore_transport_k(gravity=scipy.constants.g):
-    """Calculate alongshore transport diffusion coefficient. Used in calculation of alongshore transport into inlets.
-
-    The diffusion coefficient is calculated from Nienhuis, Ashton, Giosan, 2015.
-    Note that the Ashton & Murray (2006) value for *k* is incorrect.
-
-    Parameters
-    ----------
-    gravity : float, optional
-        Acceleration due to gravity [m/s^2].
-    """
-    return (
-        5.3e-06
-        * 1050
-        * (gravity ** 1.5)
-        * (0.5 ** 1.2)
-        * (np.sqrt(gravity * 0.78) / (2 * np.pi)) ** 0.2
-    )
-
-
-class BrieError(Exception):
-    pass
-
-
-class WaveAngleGenerator:
-    def __init__(self, asymmetry=0.8, high_fraction=0.2, wave_climl=180, rng=None):
-        """Generate incoming wave angles.
-
-        Parameters
-        ----------
-        asymmetry: float, optional
-            Fraction of waves approaching from the left, looking offshore (Ashton & Murray, 2006). Value typically
-            varied in BRIE.
-        high_fraction: float, optional
-            Fraction of waves approaching at angles higher than 45 degrees from shore normal (Ashton & Murray, 2006).
-            Value typically 0.2 in BRIE.
-
-        Examples
-        --------
-        >>> from brie.brie import WaveAngleGenerator
-        >>> angles = WaveAngleGenerator()
-        >>> angles.next()  # doctest: +SKIP
-        array([14.97622633])
-
-        >>> angles.next(samples=4)  # doctest: +SKIP
-        array([-21.13885031,  54.71667679,  14.01299681, -14.24465549])
-
-        Define an angle distribution where there are no high angle (i.e.
-        no angles outside of -45 to 45 degrees).
-
-        >>> angles = WaveAngleGenerator(asymmetry=0.5, high_fraction=0.0)
-        >>> angles.pdf([-67.5, -22.5, 22.5, 67.5]) * 45.0
-        array([0. , 0.5, 0.5, 0. ])
-
-        The cumulative distribution function is zero-valued from -90 to -45 degrees,
-        and then reaches one at 45 degrees.
-
-        >>> angles.cdf([-90, -45, 0, 45, 90])
-        array([0. , 0. , 0.5, 1. , 1. ])
-        """
-
-        if asymmetry < 0.0 or asymmetry > 1.0:
-            raise ValueError("wave angle asymmetry must be between 0 and 1")
-        if high_fraction < 0.0 or high_fraction > 1.0:
-            raise ValueError("fraction of high angles must be between 0 and 1")
-
-        if rng is None:
-            self._rng = np.random.default_rng()
-        else:
-            self._rng = rng
-
-        x = np.array([-90.0, -45.0, 0.0, 45.0, 90])
-        f = (
-            np.array(
-                [
-                    0.0,
-                    asymmetry * high_fraction,
-                    asymmetry * (1.0 - high_fraction),
-                    (1.0 - asymmetry) * (1.0 - high_fraction),
-                    (1.0 - asymmetry) * high_fraction,
-                ]
-            )
-            * 4
-            / 180.0
-        )
-
-        self._wave_pdf = interp1d(x, f, kind="next", bounds_error=False, fill_value=0.0)
-        self._wave_cdf = interp1d(
-            x,
-            np.cumsum(f) * 180.0 / 4.0,
-            bounds_error=False,
-            fill_value=(0.0, 1.0),
-        )
-        self._wave_inv_cdf = interp1d(
-            np.cumsum(f) * 180.0 / 4.0,
-            x,
-            bounds_error=False,
-            fill_value=np.nan,
-        )
-
-    def pdf(self, angle):
-        """Probability distribution function for wave angle.
-
-        Parameters
-        ----------
-        angle: number or ndarray
-            Angle(s) at which to evaluate the pdf [degree].
-
-        Returns
-        -------
-        ndarray of float
-            This is the normalized angular distribution of wave energy (Eq 39 in BRIE, from AM06).
-        """
-        return self._wave_pdf(angle)
-
-    def cdf(self, angle):
-        """Cumulative distribution function for wave angle.
-
-        Parameters
-        ----------
-        angle: number or ndarray
-            Angle(s) at which to evaluate the cdf [degree].
-
-        Returns
-        -------
-        ndarray of float
-            This is the normalized cumulative distribution of wave energy (Eq 25 in BRIE, from AM06).
-        """
-        return self._wave_cdf(angle)
-
-    def next(self, samples=1):
-        """Next wave angles from the distribution.
-
-        Parameters
-        ----------
-        samples : int
-            Number of wave angles to return.
-
-        Returns
-        -------
-        ndarray of float
-            Waves angles.
-        """
-
-        # I don't want to extrapolate, so instead if the rng is below the interpolation bounds, I pick a new number
-        # x = self._rng.random(samples)
-
-        # while x < self._lower_bnd:
-        #     x = self._rng.random(samples)
-
-        return self._wave_inv_cdf(self._rng.random(samples))
-        # return np.floor(self._wave_inv_cdf(x))
 
 
 class Brie:
@@ -309,6 +158,7 @@ class Brie:
         self._wave_period = wave_period
         self._wave_asym = wave_asymmetry
         self._wave_high = wave_angle_high_fraction
+        self._wave_angle = 0.0  # the default initial wave angle
 
         # alongshore distribution of wave energy
         self._wave_climl = int(180.0 / wave_angle_resolution)
@@ -711,6 +561,15 @@ class Brie:
         self._h_b = value
 
     @property
+    def wave_angle(self):
+        return self._wave_angle
+
+    @wave_angle.setter
+    def wave_angle(self, new_angle):
+        if new_angle > 90.0 or new_angle < -90:
+            raise ValueError("wave angle must be between -90 and 90 degrees")
+        self._wave_angle = wave_angle
+
     def h_b_save(self):
         return self._h_b_save
 
@@ -905,13 +764,14 @@ class Brie:
                 / np.pi
             )
 
+            wave_ang = self._wave_angle
             # wave direction
-            if self._bseed:
-                wave_ang = self._wave_angle[self._time_index - 1]
+            # if self._bseed:
+            #     wave_ang = self._wave_angle[self._time_index - 1]
 
-            else:
-                # wave_ang = np.nonzero(self._wave_cdf > np.random.rand())[0][] # just get the first nonzero element
-                wave_ang = int(self._angles.next())  # KA: use the wave generator!
+            # else:
+            #     # wave_ang = np.nonzero(self._wave_cdf > np.random.rand())[0][] # just get the first nonzero element
+            #     wave_ang = int(self._angles.next())  # KA: use the wave generator!
 
             # sed transport this timestep for given wave angle (KA: NOTE, -1 indexing is for Python)
             Qs = (
