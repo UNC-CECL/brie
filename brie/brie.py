@@ -764,32 +764,35 @@ class Brie:
 
             wave_ang = self._wave_angle
             # wave direction
-            # if self._bseed:
-            #     wave_ang = self._wave_angle[self._time_index - 1]
+            if self._bseed:
+                wave_ang = self._wave_angle[self._time_index - 1]
 
             # else:
             #     # wave_ang = np.nonzero(self._wave_cdf > np.random.rand())[0][] # just get the first nonzero element
             #     wave_ang = int(self._angles.next())  # KA: use the wave generator!
 
             # sed transport this timestep for given wave angle (KA: NOTE, -1 indexing is for Python)
-            Qs = (
-                self._dt
-                * self._coast_qs[
-                    np.minimum(
-                        self._wave_climl,
-                        np.maximum(
-                            1,
-                            np.round(
-                                self._wave_climl
-                                - wave_ang
-                                - (self._wave_climl / 180 * theta)
-                                + 1
+            try:
+                Qs = (
+                    self._dt
+                    * self._coast_qs[
+                        np.minimum(
+                            self._wave_climl,
+                            np.maximum(
+                                1,
+                                np.round(
+                                    self._wave_climl
+                                    - wave_ang
+                                    - (self._wave_climl / 180 * theta)
+                                    + 1
+                                ),
                             ),
-                        ),
-                    ).astype(int)
-                    - 1
-                ]
-            ).astype(float)
+                        ).astype(int)
+                        - 1
+                    ]
+                ).astype(float)
+            except ValueError:
+                raise ValueError((self._wave_climl, wave_ang.shape, theta))
 
         if self._inlet_model_on:
 
