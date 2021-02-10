@@ -4,7 +4,6 @@ from scipy.integrate import quad
 
 from brie.waves import WaveAngleGenerator, ashton
 
-
 VALID_ASYMMETRY = (0.0, 0.25, 0.5, 0.75, 1.0)
 VALID_HIGH_FRACTION = (0.0, 0.25, 0.5, 0.75, 1.0)
 
@@ -34,7 +33,7 @@ def test_ashton_frozen(loc, scale, asymmetry, high_fraction):
 )
 def test_ashton_invalid_shapes(asymmetry, high_fraction):
     with pytest.raises(ValueError):
-        dist = ashton(a=asymmetry, h=high_fraction).rvs(size=1)
+        ashton(a=asymmetry, h=high_fraction).rvs(size=1)
 
     with pytest.raises(ValueError):
         ashton.rvs(size=1, a=asymmetry, h=high_fraction)
@@ -45,13 +44,11 @@ def test_ashton_invalid_shapes(asymmetry, high_fraction):
 @pytest.mark.parametrize("loc", (0, -1, 1))
 @pytest.mark.parametrize("scale", (1, 2))
 def test_ashton_pdf(loc, scale, asymmetry, high_fraction):
-    dist = ashton(
-        a=asymmetry, h=high_fraction, loc=loc, scale=scale
-    )
+    dist = ashton(a=asymmetry, h=high_fraction, loc=loc, scale=scale)
 
     assert dist.pdf(-91) == pytest.approx(0.0)
     assert dist.pdf(91) == pytest.approx(0.0)
-    
+
     y, abserr = quad(dist.pdf, loc, loc + scale)
     assert y == pytest.approx(1.0)
 
@@ -68,9 +65,7 @@ def test_ashton_cdf():
     assert dist.cdf(0.0) == pytest.approx(0.5)
     assert dist.cdf(45.0) == pytest.approx(0.75)
 
-    dist = ashton(
-        a=np.random.random(), h=np.random.random(), loc=-90, scale=180
-    )
+    dist = ashton(a=np.random.random(), h=np.random.random(), loc=-90, scale=180)
     assert dist.cdf(-90.0) == pytest.approx(0.0)
     assert dist.cdf(90.0) == pytest.approx(1.0)
 
@@ -120,7 +115,7 @@ def test_pdf():
 
     # area_under_curve = np.trapz(y, x)
     # assert area_under_curve == pytest.approx(1.0, abs=step ** 2)
-    
+
     area_under_curve, abserr = quad(waves.pdf, -np.pi / 2.0, np.pi / 2.0)
     assert area_under_curve == pytest.approx(1.0)
 

@@ -1,18 +1,16 @@
 import numpy as np
-import scipy.constants
 import yaml
 from numpy.lib.scimath import power as cpower, sqrt as csqrt
-from scipy.interpolate import interp1d
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import spsolve
 
 from .alongshore_transporter import calc_alongshore_transport_k
+from .waves import WaveAngleGenerator
 
 
 def inlet_fraction(self, a, b, c, d, I):
     """what are the inlet fractions"""
     return a + (b / (1 + c * (I ** d)))
-
 
 
 class Brie:
@@ -329,7 +327,6 @@ class Brie:
         self._angles = WaveAngleGenerator(
             asymmetry=self._wave_asym,
             high_fraction=self._wave_high,
-            wave_climl=self._wave_climl,
         )  # wave angle generator for each time step for calculating Qs_in
 
         wave_pdf = self._angles.pdf(np.rad2deg(self._angle_array))  # wave climate pdf
@@ -568,8 +565,9 @@ class Brie:
     def wave_angle(self, new_angle):
         if new_angle > 90.0 or new_angle < -90:
             raise ValueError("wave angle must be between -90 and 90 degrees")
-        self._wave_angle = wave_angle
+        self._wave_angle = new_angle
 
+    @property
     def h_b_save(self):
         return self._h_b_save
 
@@ -1003,9 +1001,13 @@ class Brie:
                     new_inlet_idx = np.mod(
                         self._new_inlet + np.r_[1 : (wi_cell[j - 1] + 1)] - 1, self._ny
                     )
-                    self._x_b_fld_dt[new_inlet_idx] = self._[new_inlet_idx] + (
+                    self._x_b_fld_dt[new_inlet_idx] = self._x_b_fld_dt[
+                        new_inlet_idx
+                    ] + (
                         (self._h_b[self._new_inlet] + di_eq[j - 1]) * w[self._new_inlet]
-                    ) / (d_b[self._new_inlet])
+                    ) / (
+                        d_b[self._new_inlet]
+                    )
 
                     self._Qinlet[self._time_index - 1] = self._Qinlet[
                         self._time_index - 1

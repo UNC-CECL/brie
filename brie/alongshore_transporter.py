@@ -9,9 +9,8 @@ References
 .. [1] Jaap H. Nienhuis, Andrew D. Ashton, Liviu Giosan; What makes a delta wave-dominated?. Geology ; 43 (6): 511–514. doi: https://doi.org/10.1130/G36518.1
 """
 import numpy as np
-import scipy.sparse
 import scipy.constants
-
+import scipy.sparse
 
 SECONDS_PER_YEAR = 3600.0 * 24.0 * 365.0
 
@@ -50,11 +49,11 @@ def calc_alongshore_transport_k(
     The sediment transport constant, :math:`K_1`, is calculated as follows,
 
     .. math::
-    
+
         K_1 = 5.3 \cdot 10^{-6} K \left( \frac{1}{2n} \right)^{6 \over 5} \left( \frac{\sqrt{g \gamma_b}} {2 \pi} \right)^{1 \over 5}
 
     where:
-    
+
     .. math::
 
         K = 0.46 \rho g^{3 \over 2}
@@ -137,12 +136,12 @@ def calc_coast_qs(wave_angle, wave_height=1.0, wave_period=10.0):
     -------
     float or array of float
         Coastal qs [m3 / yr]
-        
+
     Notes
     -----
-    
+
     Alongshore sediment transport is computed using the CERC or Komar (Komar, 1998 [2]_ ) formula, reformulated into deep-water wave properties (Ashton and Murray, 2006 [3]_ ) by back-refracting the waves over shore-parallel contours, which yields:
-    
+
     .. math::
 
         Q_s = K_1 \cdot H_s^{12/5} T^{1/5} \cos^{6/5}\left( \Delta \theta \right) \sin \left(\Delta \theta\right)
@@ -152,7 +151,7 @@ def calc_coast_qs(wave_angle, wave_height=1.0, wave_period=10.0):
     References
     ----------
     .. [2] Komar P.D., 1998, Beach processes and sedimentation: Upper Saddle River, New Jersey, Prentice Hall , 544 p.
-    
+
     .. [3] Ashton A.D. Murray A.B., 2006, High-angle wave instability and emergent shoreline shapes: 1. Modeling of sand waves, flying spits, and capes: Journal of Geophysical Research , v. 111, F04011, doi:10.1029/2005JF000422.
     """
     return (
@@ -203,9 +202,9 @@ def calc_coast_diff(
     wave_pdf, wave_angle, wave_height=1.0, wave_period=10.0, h_b_crit=2.0
 ):
     r"""Calculate sediment diffusion along a coastline.
-    
+
     .. math::
-    
+
         Q_{s,net} \left( \theta \right) = E \left( \phi_0 \right) * Q_s \left( \phi_0 - \theta \right)
 
     Parameters
@@ -245,7 +244,7 @@ def calc_coast_diff(
     )
 
     # return np.interp(shoreline_angles, all_angles, y) * np.sign(-wave_angle)
-    return np.interp(-wave_angle, all_angles, y) #  * np.sign(-wave_angle)
+    return np.interp(-wave_angle, all_angles, y)  # * np.sign(-wave_angle)
 
 
 def _build_tridiagonal_matrix(diagonal, lower=None, upper=None):
@@ -255,7 +254,7 @@ def _build_tridiagonal_matrix(diagonal, lower=None, upper=None):
     ----------
     values_at_node: array of float
         Values to place along the diagonals.
-        
+
     Examples
     --------
     >>> from brie.alongshore_transporter import _build_tridiagonal_matrix
@@ -264,7 +263,7 @@ def _build_tridiagonal_matrix(diagonal, lower=None, upper=None):
            [2, 2, 2, 0],
            [0, 3, 3, 3],
            [4, 0, 4, 4]])
-           
+
     >>> _build_tridiagonal_matrix(
     ...     [1, 2, 3, 4], lower=[11, 12, 13, 14], upper=[21, 22, 23, 24]
     ... ).toarray()
@@ -280,7 +279,10 @@ def _build_tridiagonal_matrix(diagonal, lower=None, upper=None):
     n_rows = n_cols = len(diagonal)
 
     mat = scipy.sparse.spdiags(
-        [np.r_[lower[1:], 0], diagonal, np.r_[0, upper[:-1]]], [-1, 0, 1], n_rows, n_cols
+        [np.r_[lower[1:], 0], diagonal, np.r_[0, upper[:-1]]],
+        [-1, 0, 1],
+        n_rows,
+        n_cols,
     ).tolil()
 
     mat[0, -1] = lower[0]
@@ -289,7 +291,9 @@ def _build_tridiagonal_matrix(diagonal, lower=None, upper=None):
     return mat
 
 
-def _build_matrix(shoreline_x, wave_distribution, dy=1.0, wave_height=1.0, wave_period=10.0):
+def _build_matrix(
+    shoreline_x, wave_distribution, dy=1.0, wave_height=1.0, wave_period=10.0
+):
     dt = 1.0
 
     shoreline_angles = calc_shoreline_angles(shoreline_x, spacing=dy)
@@ -298,7 +302,7 @@ def _build_matrix(shoreline_x, wave_distribution, dy=1.0, wave_height=1.0, wave_
         calc_coast_diff(
             wave_distribution.pdf,
             # np.pi / 2.0 - shoreline_angles, # Use shoreline angles???
-            -shoreline_angles, # Use shoreline angles???
+            -shoreline_angles,  # Use shoreline angles???
             # angles, # Use shoreline angles???
             wave_height=wave_height,
             wave_period=wave_period,
@@ -373,7 +377,7 @@ class AlongshoreTransporter:
             calc_coast_diff(
                 self._wave_distribution.pdf,
                 # np.pi / 2.0 - shoreline_angles, # Use shoreline angles???
-                - shoreline_angles, # Use shoreline angles???
+                -shoreline_angles,  # Use shoreline angles???
                 # angles, # Use shoreline angles???
                 wave_height=self._wave_height,
                 wave_period=self._wave_period,
@@ -384,14 +388,18 @@ class AlongshoreTransporter:
             a_max=None,
         )
 
-        r_ipl = calc_coast_diff(
-            self._wave_distribution.pdf,
-            # np.pi / 2.0 - shoreline_angles, # Use shoreline angles???
-            - shoreline_angles, # Use shoreline angles???
-            # angles, # Use shoreline angles???
-            wave_height=self._wave_height,
-            wave_period=self._wave_period,
-        ) * dt / (2.0 * self._dy ** 2)
+        r_ipl = (
+            calc_coast_diff(
+                self._wave_distribution.pdf,
+                # np.pi / 2.0 - shoreline_angles, # Use shoreline angles???
+                -shoreline_angles,  # Use shoreline angles???
+                # angles, # Use shoreline angles???
+                wave_height=self._wave_height,
+                wave_period=self._wave_period,
+            )
+            * dt
+            / (2.0 * self._dy ** 2)
+        )
 
         mat = _build_tridiagonal_matrix(1.0 + 2.0 * r_ipl, lower=-r_ipl, upper=-r_ipl)
 
