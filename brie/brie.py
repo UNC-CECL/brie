@@ -14,9 +14,6 @@ def inlet_fraction(self, a, b, c, d, I):
     return a + (b / (1 + c * (I ** d)))
 
 
-SECONDS_PER_YEAR = 3600.0 * 24.0 * 365.0
-
-
 class Brie:
     def __init__(
         self,

@@ -76,6 +76,7 @@ def test_ashton_cdf():
 
 
 def test_waves_min_and_max():
+
     waves = WaveAngleGenerator()
     angles = waves.next(10000)
     assert np.all(angles >= -np.pi / 2.0)
