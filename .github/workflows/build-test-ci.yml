@@ -28,11 +28,6 @@ jobs:
       - name: Show conda installation info
         run: conda info
 
-      - name: Install dependencies
-        run: |
-          conda install --file=requirements-testing.txt -c conda-forge
-          conda list
-
       - name: Build and install package
         run: pip install .
 
