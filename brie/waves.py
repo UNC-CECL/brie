@@ -78,15 +78,18 @@ ashton = ashton_gen(a=0.0, b=1.0, name="ashton")
 
 
 class WaveAngleGenerator:
-    def __init__(self, asymmetry=0.5, high_fraction=0.5, rng=None):
+    def __init__(self, asymmetry=0.8, high_fraction=0.2, rng=None):
+    # def __init__(self, asymmetry=0.8, high_fraction=0.2, wave_climl=180, rng=None):
         """Generate incoming wave angles.
 
         Parameters
         ----------
         asymmetry: float, optional
-            Fraction of waves approaching from left (looking onshore).
+            Fraction of waves approaching from the left, looking offshore (Ashton & Murray, 2006). Value typically
+            varied in BRIE.
         high_fraction: float, optional
-            Fraction of waves approaching from angles higher than 45 degrees.
+            Fraction of waves approaching at angles higher than 45 degrees from shore normal (Ashton & Murray, 2006).
+            Value typically 0.2 in BRIE.
 
         Examples
         --------
@@ -99,8 +102,12 @@ class WaveAngleGenerator:
         >>> angles.next(samples=4)  # doctest: +SKIP
         array([-0.27482598,  1.25014028,  0.32893483, -0.87115524])
 
+        Define an angle distribution where there are no high angle (i.e.
+        no angles outside of -45 to 45 degrees).
+
         >>> angles = WaveAngleGenerator(asymmetry=0.5, high_fraction=0.0)
-        >>> angles.pdf(np.deg2rad([-67.5, -22.5, 22.5, 67.5])) * np.pi / 4.0
+        >>> step = np.pi / 4.0
+        >>> angles.pdf(np.deg2rad([-67.5, -22.5, 22.5, 67.5])) * step
         array([0. , 0.5, 0.5, 0. ])
 
         >>> angles.cdf(np.deg2rad([-90, -45, 0, 45, 90]))
@@ -116,7 +123,9 @@ class WaveAngleGenerator:
         else:
             self._rng = rng
 
+        # KA: using radians instead of degrees
         x = np.deg2rad(np.array([-90.0, -45.0, 0.0, 45.0, 90]))
+
         f = (
             np.array(
                 [
@@ -130,6 +139,20 @@ class WaveAngleGenerator:
             * 4.0
             / np.pi
         )
+
+        # f = (
+        #         np.array(
+        #             [
+        #                 asymmetry * high_fraction,
+        #                 asymmetry * (1.0 - high_fraction),
+        #                 (1.0 - asymmetry) * (1.0 - high_fraction),
+        #                 (1.0 - asymmetry) * high_fraction,
+        #                 (1.0 - asymmetry) * high_fraction,
+        #             ]
+        #         )
+        #         * 4.0
+        #         / np.pi
+        # )
 
         self._wave_pdf = interp1d(x, f, kind="next", bounds_error=False, fill_value=0.0)
         self._wave_cdf = interp1d(
@@ -150,11 +173,23 @@ class WaveAngleGenerator:
         Returns
         -------
         ndarray of float
-            Cumulative probabilities for each angle.
+            This is the normalized angular distribution of wave energy (Eq 39 in BRIE, from AM06).
         """
         return self._wave_pdf(angle)
 
     def cdf(self, angle):
+        """Cumulative distribution function for wave angle.
+
+        Parameters
+        ----------
+        angle: number or ndarray
+            Angle(s) at which to evaluate the cdf [degree].
+
+        Returns
+        -------
+        ndarray of float
+            This is the normalized cumulative distribution of wave energy (Eq 25 in BRIE, from AM06).
+        """
         return self._wave_cdf(angle)
 
     def next(self, samples=1):
@@ -170,4 +205,12 @@ class WaveAngleGenerator:
         ndarray of float
             Waves angles.
         """
+
+        # I don't want to extrapolate, so instead if the rng is below the interpolation bounds, I pick a new number
+        # x = self._rng.random(samples)
+
+        # while x < self._lower_bnd:
+        #     x = self._rng.random(samples)
+
         return self._wave_inv_cdf(self._rng.random(samples))
+        # return np.floor(self._wave_inv_cdf(x))
