@@ -5,11 +5,11 @@ from scipy.stats import rv_continuous
 
 class ashton_gen(rv_continuous):
     r"""An Ashton continuous random variable.
-    
+
     The Ashton distribution divides [0, 1] into quartiles that are uniform
     distributions defined by the shape parameters $a$ (the asymmetry) and
     $h$ (high fraction).
-    
+
     .. math::
 
         f(x, a, h) =

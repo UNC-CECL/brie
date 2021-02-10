@@ -1,5 +1,3 @@
-from functools import partial
-
 import numpy as np
 import pytest
 import scipy.stats
@@ -292,13 +290,13 @@ def test_calc_coast_qs_normal_waves(func):
 @pytest.mark.parametrize("func", (calc_coast_qs, old_calc_coast_qs))
 def test_calc_coast_qs_left_transport(func):
     angles = np.random.uniform(low=-np.pi / 2.0, high=0.0, size=50)
-    assert func(-np.pi / 4.0) < 0.0
+    assert np.all(func(angles) < 0.0)
 
 
 @pytest.mark.parametrize("func", (calc_coast_qs, old_calc_coast_qs))
 def test_calc_coast_qs_right_transport(func):
     angles = np.random.uniform(low=0.0, high=np.pi / 2.0, size=50)
-    assert func(np.pi / 4.0) > 0.0
+    assert np.all(func(angles) > 0.0)
 
 
 @pytest.mark.parametrize("func", (calc_coast_qs, old_calc_coast_qs))
@@ -496,7 +494,7 @@ def test_tridiag_old_and_new():
 
 
 def test_build_matrices_old_and_new():
-    data = np.arange(1, 6)
+    # data = np.arange(1, 6)
     x_s = np.zeros(13)
     x_s[-1] = 1.0
     wave_distribution = scipy.stats.uniform(loc=-np.pi / 2.0, scale=np.pi)
