@@ -203,7 +203,7 @@ class WaveAngleGenerator:
         Returns
         -------
         ndarray of float
-            Waves angles.
+            Waves angles [radians].
         """
 
         # I don't want to extrapolate, so instead if the rng is below the interpolation bounds, I pick a new number
