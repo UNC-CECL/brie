@@ -1,16 +1,17 @@
 #! /usr/bin/env python
 from setuptools import find_packages, setup
 
+
 def read(filename):
     with open(filename, "r", encoding="utf-8") as fp:
         return fp.read()
 
 
-long_description = u'\n\n'.join(
+long_description = u"\n\n".join(
     [
-        read('README.rst'),
-        read('AUTHORS.rst'),
-        read('CHANGES.rst'),
+        read("README.rst"),
+        read("AUTHORS.rst"),
+        read("CHANGES.rst"),
     ]
 )
 

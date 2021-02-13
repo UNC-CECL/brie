@@ -4,31 +4,36 @@ Written by K.Anarde
 - imports matlab inputs for seeding of brie.py (for version testing and grid testing)
 
 """
-import numpy as np
 import os
+
 import matplotlib.pyplot as plt
+import numpy as np
 from scipy.io import loadmat
+
 from brie import Brie
 
-os.chdir('/Users/KatherineAnardeWheels/PycharmProjects/Barrier_Inlet_Environment_BRIE_Model/')
+os.chdir(
+    "/Users/KatherineAnardeWheels/PycharmProjects/Barrier_Inlet_Environment_BRIE_Model/"
+)
 
 # subset of indices for testing grid discretization
-name = 'test_brie_matlab_seed'
+name = "test_brie_matlab_seed"
 dt = [0.05, 0.1, 0.25, 0.50, 1]  # yr
 dy = [1000, 500, 250, 100, 50]  # m
 
 # import structures from Matlab
-mat = loadmat('test_brie_matlab_seed.mat')
+mat = loadmat("test_brie_matlab_seed.mat")
 
 output = np.empty((np.size(dt), np.size(dy)), dtype=object)
 
+
 def batchBrie(ii, jj, dt, dy, name, mat):
     # get matlab seed parameters
-    xs = [mat['output'][ii][jj]['xs'].flat[0]]
+    xs = [mat["output"][ii][jj]["xs"].flat[0]]
     xs = np.r_[xs[0]].flatten()  # this is a numpy array - make sure that's ok
-    wave_angle = [mat['output'][ii][jj]['wave_angle'].flat[0]]
+    wave_angle = [mat["output"][ii][jj]["wave_angle"].flat[0]]
     wave_angle = list(np.r_[wave_angle[0]].flatten())  # this is a list
-    print('size of Matlab wave_angle and xs = ', np.size(wave_angle), np.size(xs))
+    print("size of Matlab wave_angle and xs = ", np.size(wave_angle), np.size(xs))
 
     # create a Brie instance
     brie = Brie(
@@ -46,9 +51,9 @@ def batchBrie(ii, jj, dt, dy, name, mat):
     )  # initialize class
 
     # check that my updated variables are correct
-    print('dt = ', dt[ii])
-    print('dy = ', dy[jj])
-    print('model timesteps for 1000 morphologic years = ', int(brie._nt))
+    print("dt = ", dt[ii])
+    print("dy = ", dy[jj])
+    print("model timesteps for 1000 morphologic years = ", int(brie._nt))
 
     # run the brie model
     for time_step in range(int(brie._nt) - 1):
@@ -76,7 +81,7 @@ for kk in inputs_dt:
 # save output
 ###############################################################################
 
-filename = name + '.npz'
+filename = name + ".npz"
 np.savez(filename, output=output)
 
 ###############################################################################
@@ -84,9 +89,19 @@ np.savez(filename, output=output)
 ###############################################################################
 
 # preallocate arrays
-Qoverwash_total_py, Qoverwash_total_mat, Qinlet_total_py, Qinlet_total_mat, F_py, F_mat, dy_py, dt_py, nt_py, dy_mat, dt_mat = [
-    np.zeros((np.size(dt), np.size(dy))) for _ in range(11)
-]
+(
+    Qoverwash_total_py,
+    Qoverwash_total_mat,
+    Qinlet_total_py,
+    Qinlet_total_mat,
+    F_py,
+    F_mat,
+    dy_py,
+    dt_py,
+    nt_py,
+    dy_mat,
+    dt_mat,
+) = [np.zeros((np.size(dt), np.size(dy))) for _ in range(11)]
 
 for ii in inputs_dt:
     for jj in inputs_dy:
@@ -100,58 +115,62 @@ for ii in inputs_dt:
         # find the mean of Qoverwash and Qinlet for calculation of F (see Jaap's Figure 9)
         Qoverwash_total_py[ii, jj] = np.mean(brie._Qoverwash)
         Qinlet_total_py[ii, jj] = np.mean(brie._Qinlet)
-        F_py[ii, jj] = (Qinlet_total_py[ii, jj] /
-                     (Qinlet_total_py[ii, jj] + Qoverwash_total_py[ii, jj]))
+        F_py[ii, jj] = Qinlet_total_py[ii, jj] / (
+            Qinlet_total_py[ii, jj] + Qoverwash_total_py[ii, jj]
+        )
 
-        inlet_age_py = np.array(brie._inlet_age) # we are only going to look at the last model output
+        inlet_age_py = np.array(
+            brie._inlet_age
+        )  # we are only going to look at the last model output
 
         # and now matlab output
-        tmp_Qoverwash_mat = [mat['output'][ii][jj]['Qoverwash'].flat[0]]
-        tmp_Qinlet_mat = [mat['output'][ii][jj]['Qinlet'].flat[0]]
+        tmp_Qoverwash_mat = [mat["output"][ii][jj]["Qoverwash"].flat[0]]
+        tmp_Qinlet_mat = [mat["output"][ii][jj]["Qinlet"].flat[0]]
 
         tmp_Qoverwash_mat = np.r_[tmp_Qoverwash_mat[0]].flatten()
         tmp_Qinlet_mat = np.r_[tmp_Qinlet_mat[0]].flatten()
-        tmp_dy_mat = [mat['output'][ii][jj]['dy'].flat[0]]
+        tmp_dy_mat = [mat["output"][ii][jj]["dy"].flat[0]]
         dy_mat[ii, jj] = np.r_[tmp_dy_mat[0]].flatten()
-        tmp_dt_mat = [mat['output'][ii][jj]['dt'].flat[0]]
+        tmp_dt_mat = [mat["output"][ii][jj]["dt"].flat[0]]
         dt_mat[ii, jj] = np.r_[tmp_dt_mat[0]].flatten()
-        tmp_inlet_age_mat = [mat['output'][ii][jj]['inlet_age'].flat[0]]
+        tmp_inlet_age_mat = [mat["output"][ii][jj]["inlet_age"].flat[0]]
         inlet_age_mat = tmp_inlet_age_mat[0]
 
         # again, find the mean
         Qoverwash_total_mat[ii, jj] = np.mean(tmp_Qoverwash_mat)
         Qinlet_total_mat[ii, jj] = np.mean(tmp_Qinlet_mat)
-        F_mat[ii, jj] = (Qinlet_total_mat[ii, jj] /
-                         (Qinlet_total_mat[ii, jj] + Qoverwash_total_mat[ii, jj]))
+        F_mat[ii, jj] = Qinlet_total_mat[ii, jj] / (
+            Qinlet_total_mat[ii, jj] + Qoverwash_total_mat[ii, jj]
+        )
 
 # plot the inlet age for the last model
 fig, axs = plt.subplots(1, 2)
 
 ax = axs[0]
 ax.scatter(inlet_age_py[:, 0], inlet_age_py[:, 1])
-ax.set_title('python - inlet_age')
-ax.set_xlabel('timestep (dt)')
-ax.set_ylabel('inlet id')
+ax.set_title("python - inlet_age")
+ax.set_xlabel("timestep (dt)")
+ax.set_ylabel("inlet id")
 
 ax = axs[1]
 ax.scatter(inlet_age_mat[:, 0], inlet_age_mat[:, 1])
-ax.set_xlabel('dt (yr)')
-ax.set_xlabel('timestep (dt)')
-ax.set_title('matlab - inlet_age')
+ax.set_xlabel("dt (yr)")
+ax.set_xlabel("timestep (dt)")
+ax.set_title("matlab - inlet_age")
 plt.show()
 
 # histogram of F
 fig, axs = plt.subplots(1, 2, sharey=True, tight_layout=True)
 
 axs[0].hist(F_py)
-axs[0].set_xlabel('F')
-axs[0].set_ylabel('Number of model runs')
-axs[0].set_title('python')
+axs[0].set_xlabel("F")
+axs[0].set_ylabel("Number of model runs")
+axs[0].set_title("python")
 
 axs[1].hist(F_mat)
-axs[1].set_xlabel('F')
-axs[1].set_ylabel('Number of model runs')
-axs[1].set_title('matlab')
+axs[1].set_xlabel("F")
+axs[1].set_ylabel("Number of model runs")
+axs[1].set_title("matlab")
 
 # grid discretization comparison (no normalization, no transpose)
 fig, axs = plt.subplots(2, 3, sharey=True)
@@ -159,71 +178,69 @@ plt.jet()
 
 # Qoverwash
 ax = axs[0, 1]
-im = ax.pcolormesh(Qoverwash_total_py, edgecolors='white', linewidths=1,
-                   antialiased=True)  # , vmin=0.8,vmax=1.2
+im = ax.pcolormesh(
+    Qoverwash_total_py, edgecolors="white", linewidths=1, antialiased=True
+)  # , vmin=0.8,vmax=1.2
 fig.colorbar(im, ax=ax)
-ax.set_title('python - Qoverwash')
+ax.set_title("python - Qoverwash")
 ax.set_yticks(np.arange(len(dt)) + 0.5)  # set ticks in the center of box
 ax.set_xticks(np.arange(len(dy)) + 0.5)
 ax.set_xticklabels(dy)
 ax.set_yticklabels(dt)  # dt
 
 ax = axs[1, 1]
-im = ax.pcolormesh(Qoverwash_total_mat, edgecolors='white', linewidths=1,
-                   antialiased=True)
+im = ax.pcolormesh(
+    Qoverwash_total_mat, edgecolors="white", linewidths=1, antialiased=True
+)
 fig.colorbar(im, ax=ax)
-ax.set_title('matlab - Qoverwash')
+ax.set_title("matlab - Qoverwash")
 ax.set_yticks(np.arange(len(dt)) + 0.5)  # set ticks in the center of box
 ax.set_xticks(np.arange(len(dy)) + 0.5)
 ax.set_xticklabels(dy)
 ax.set_yticklabels(dt)  # dt
-ax.set_xlabel('dy (m)')
+ax.set_xlabel("dy (m)")
 
 # Qinlet
 ax = axs[0, 0]
-im = ax.pcolormesh(Qinlet_total_py, edgecolors='white', linewidths=1,
-                   antialiased=True)
+im = ax.pcolormesh(Qinlet_total_py, edgecolors="white", linewidths=1, antialiased=True)
 fig.colorbar(im, ax=ax)
-ax.set_title('python - Qinlet')
+ax.set_title("python - Qinlet")
 ax.set_yticks(np.arange(len(dt)) + 0.5)  # set ticks in the center of box
 ax.set_xticks(np.arange(len(dy)) + 0.5)
 ax.set_xticklabels(dy)
 ax.set_yticklabels(dt)  # dt
-ax.set_ylabel('dt (yr)')
+ax.set_ylabel("dt (yr)")
 
 ax = axs[1, 0]
-im = ax.pcolormesh(Qinlet_total_mat, edgecolors='white', linewidths=1,
-                   antialiased=True)
+im = ax.pcolormesh(Qinlet_total_mat, edgecolors="white", linewidths=1, antialiased=True)
 fig.colorbar(im, ax=ax)
-ax.set_title('matlab - Qinlet')
+ax.set_title("matlab - Qinlet")
 ax.set_yticks(np.arange(len(dt)) + 0.5)  # set ticks in the center of box
 ax.set_xticks(np.arange(len(dy)) + 0.5)
 ax.set_xticklabels(dy)
 ax.set_yticklabels(dt)  # dt
-ax.set_xlabel('dy (m)')
-ax.set_ylabel('dt (yr)')
+ax.set_xlabel("dy (m)")
+ax.set_ylabel("dt (yr)")
 
 # F
 ax = axs[0, 2]
-im = ax.pcolormesh(F_py, edgecolors='white', linewidths=1,
-                   antialiased=True)
+im = ax.pcolormesh(F_py, edgecolors="white", linewidths=1, antialiased=True)
 fig.colorbar(im, ax=ax)
-ax.set_title('python - F')
+ax.set_title("python - F")
 ax.set_yticks(np.arange(len(dt)) + 0.5)  # set ticks in the center of box
 ax.set_xticks(np.arange(len(dy)) + 0.5)
 ax.set_xticklabels(dy)
 ax.set_yticklabels(dt)  # dt
 
 ax = axs[1, 2]
-im = ax.pcolormesh(F_mat, edgecolors='white', linewidths=1,
-                   antialiased=True)
+im = ax.pcolormesh(F_mat, edgecolors="white", linewidths=1, antialiased=True)
 fig.colorbar(im, ax=ax)
-ax.set_title('matlab - F')
+ax.set_title("matlab - F")
 ax.set_yticks(np.arange(len(dt)) + 0.5)  # set ticks in the center of box
 ax.set_xticks(np.arange(len(dy)) + 0.5)
 ax.set_xticklabels(dy)
 ax.set_yticklabels(dt)  # dt
-ax.set_xlabel('dy (m)')
+ax.set_xlabel("dy (m)")
 
 # debugging the new inlet modifications from Jaap
 # I think the differences in the indices inlet_idx (for the same shoreline and wave angle) between the matlab and python

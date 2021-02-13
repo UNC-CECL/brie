@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 from typing import Tuple
 
-from bmipy import Bmi
 import numpy
+from bmipy import Bmi
 
 from .brie import Brie
 
@@ -582,7 +582,10 @@ class BrieBMI(Bmi):
             The size of the variable, counted in bytes.
         """
         itemsize = self.get_var_itemsize(name)
-        if name == "sea_surface_water_wave__azimuth_angle_of_opposite_of_phase_velocity":
+        if (
+            name
+            == "sea_surface_water_wave__azimuth_angle_of_opposite_of_phase_velocity"
+        ):
             return itemsize
         else:
             return itemsize * self._brie._ny
@@ -722,7 +725,10 @@ class BrieBMI(Bmi):
         src : array_like
             The new value for the specified variable.
         """
-        if name == "sea_surface_water_wave__azimuth_angle_of_opposite_of_phase_velocity":
+        if (
+            name
+            == "sea_surface_water_wave__azimuth_angle_of_opposite_of_phase_velocity"
+        ):
             self._brie._wave_angle[self._brie._time_index] = values[0]
         elif name == "delta_shoreline__x_coordinate":
             self._brie._x_s[:] = values
