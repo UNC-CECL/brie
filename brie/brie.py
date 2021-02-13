@@ -1,12 +1,11 @@
 import numpy as np
-import scipy.constants
 import yaml
 from numpy.lib.scimath import power as cpower, sqrt as csqrt
-from scipy.interpolate import interp1d
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import spsolve
 
 from .alongshore_transporter import calc_alongshore_transport_k
+from .waves import WaveAngleGenerator
 
 
 def inlet_fraction(self, a, b, c, d, I):
@@ -567,7 +566,7 @@ class Brie:
     def wave_angle(self, new_angle):
         if new_angle > 90.0 or new_angle < -90:
             raise ValueError("wave angle must be between -90 and 90 degrees")
-        self._wave_angle = wave_angle
+        self._wave_angle = new_angle
 
     def h_b_save(self):
         return self._h_b_save

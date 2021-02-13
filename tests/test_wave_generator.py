@@ -33,7 +33,7 @@ def test_ashton_frozen(loc, scale, asymmetry, high_fraction):
 )
 def test_ashton_invalid_shapes(asymmetry, high_fraction):
     with pytest.raises(ValueError):
-        dist = ashton(a=asymmetry, h=high_fraction).rvs(size=1)
+        ashton(a=asymmetry, h=high_fraction).rvs(size=1)
 
     with pytest.raises(ValueError):
         ashton.rvs(size=1, a=asymmetry, h=high_fraction)

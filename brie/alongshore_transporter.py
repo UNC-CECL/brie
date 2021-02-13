@@ -244,7 +244,7 @@ def calc_coast_diff(
     )
 
     # return np.interp(shoreline_angles, all_angles, y) * np.sign(-wave_angle)
-    return np.interp(-wave_angle, all_angles, y)  #  * np.sign(-wave_angle)
+    return np.interp(-wave_angle, all_angles, y)  # * np.sign(-wave_angle)
 
 
 def _build_tridiagonal_matrix(diagonal, lower=None, upper=None):
