@@ -516,7 +516,6 @@ def test_tridiag_old_and_new():
 
 
 def test_build_matrices_old_and_new():
-    # data = np.arange(1, 6)
     x_s = np.zeros(13)
     x_s[-1] = 1.0
     wave_distribution = scipy.stats.uniform(loc=-np.pi / 2.0, scale=np.pi)
