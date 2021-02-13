@@ -290,13 +290,13 @@ def test_calc_coast_qs_normal_waves(func):
 @pytest.mark.parametrize("func", (calc_coast_qs, old_calc_coast_qs))
 def test_calc_coast_qs_left_transport(func):
     angles = np.random.uniform(low=-np.pi / 2.0, high=0.0, size=50)
-    assert func(angles) < 0.0
+    assert np.all(func(angles) < 0.0)
 
 
 @pytest.mark.parametrize("func", (calc_coast_qs, old_calc_coast_qs))
 def test_calc_coast_qs_right_transport(func):
     angles = np.random.uniform(low=0.0, high=np.pi / 2.0, size=50)
-    assert func(angles) > 0.0
+    assert np.all(func(angles) > 0.0)
 
 
 @pytest.mark.parametrize("func", (calc_coast_qs, old_calc_coast_qs))

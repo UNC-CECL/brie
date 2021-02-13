@@ -327,7 +327,6 @@ class Brie:
         self._angles = WaveAngleGenerator(
             asymmetry=self._wave_asym,
             high_fraction=self._wave_high,
-            wave_climl=self._wave_climl,
         )  # wave angle generator for each time step for calculating Qs_in
 
         wave_pdf = self._angles.pdf(np.rad2deg(self._angle_array))  # wave climate pdf
@@ -568,6 +567,7 @@ class Brie:
             raise ValueError("wave angle must be between -90 and 90 degrees")
         self._wave_angle = new_angle
 
+    @property
     def h_b_save(self):
         return self._h_b_save
 
@@ -764,32 +764,35 @@ class Brie:
 
             wave_ang = self._wave_angle
             # wave direction
-            # if self._bseed:
-            #     wave_ang = self._wave_angle[self._time_index - 1]
+            if self._bseed:
+                wave_ang = self._wave_angle[self._time_index - 1]
 
             # else:
             #     # wave_ang = np.nonzero(self._wave_cdf > np.random.rand())[0][] # just get the first nonzero element
             #     wave_ang = int(self._angles.next())  # KA: use the wave generator!
 
             # sed transport this timestep for given wave angle (KA: NOTE, -1 indexing is for Python)
-            Qs = (
-                self._dt
-                * self._coast_qs[
-                    np.minimum(
-                        self._wave_climl,
-                        np.maximum(
-                            1,
-                            np.round(
-                                self._wave_climl
-                                - wave_ang
-                                - (self._wave_climl / 180 * theta)
-                                + 1
+            try:
+                Qs = (
+                    self._dt
+                    * self._coast_qs[
+                        np.minimum(
+                            self._wave_climl,
+                            np.maximum(
+                                1,
+                                np.round(
+                                    self._wave_climl
+                                    - wave_ang
+                                    - (self._wave_climl / 180 * theta)
+                                    + 1
+                                ),
                             ),
-                        ),
-                    ).astype(int)
-                    - 1
-                ]
-            ).astype(float)
+                        ).astype(int)
+                        - 1
+                    ]
+                ).astype(float)
+            except ValueError:
+                raise ValueError((self._wave_climl, wave_ang.shape, theta))
 
         if self._inlet_model_on:
 
@@ -1001,9 +1004,13 @@ class Brie:
                     new_inlet_idx = np.mod(
                         self._new_inlet + np.r_[1 : (wi_cell[j - 1] + 1)] - 1, self._ny
                     )
-                    self._x_b_fld_dt[new_inlet_idx] = self._[new_inlet_idx] + (
+                    self._x_b_fld_dt[new_inlet_idx] = self._x_b_fld_dt[
+                        new_inlet_idx
+                    ] + (
                         (self._h_b[self._new_inlet] + di_eq[j - 1]) * w[self._new_inlet]
-                    ) / (d_b[self._new_inlet])
+                    ) / (
+                        d_b[self._new_inlet]
+                    )
 
                     self._Qinlet[self._time_index - 1] = self._Qinlet[
                         self._time_index - 1
