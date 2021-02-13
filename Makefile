@@ -54,8 +54,8 @@ lint: ## check style with flake8
 	flake8 brie tests
 
 pretty: ## reformat files to make them look pretty
-	find brie tests -name '*.py' | xargs isort
-	black setup.py brie tests
+	find brie tests scripts docs -name '*.py' | xargs isort
+	black setup.py brie tests scripts docs
 
 test: ## run tests quickly with the default Python
 	pytest -n4
