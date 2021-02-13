@@ -39,19 +39,3 @@ jobs:
           python -c 'import brie; print(brie.__version__)'
           pytest -vvv
           bmi-test --config-file=tests/test_bmi/brie.yaml --root-dir=tests/test_bmi -vvv brie.brie_bmi:BrieBMI
-
-  lint:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Set up Python 3.8
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.8
-
-      - name: Lint
-        run: |
-          pip install flake8
-          flake8 brie tests
