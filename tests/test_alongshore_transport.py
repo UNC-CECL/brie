@@ -11,7 +11,7 @@ from brie.alongshore_transporter import (
     calc_coast_diffusivity,
     calc_coast_qs,
     calc_shoreline_angles,
-    calc_inlet_alongshore_transport
+    calc_inlet_alongshore_transport,
 )
 
 
@@ -77,24 +77,24 @@ def old_calc_coast_diffusivity(
     wave_pdf, shoreline_angles, wave_height=1.0, wave_period=10.0, h_b_crit=2.0
 ):
     wave_climl = 180
-    # angle_array, step = np.linspace(-90.0, 90.0, wave_climl + 1, retstep=True)
-    angle_array, step = np.linspace(-89.5, 89.5, 180, retstep=True)
+    angle_array, step = np.linspace(-90.0, 90.0, wave_climl + 1, retstep=True)
+    # angle_array, step = np.linspace(-89.5, 89.5, 180, retstep=True)
     angle_array = np.deg2rad(angle_array)
 
     d_sf = 8.9 * wave_height
 
     diff = (
-            -(
-                    calc_alongshore_transport_k()
-                    / (h_b_crit + d_sf)
-                    * wave_height ** 2.4
-                    * wave_period ** 0.2
-            )
-            * 365
-            * 24
-            * 3600
-            * (np.cos(angle_array) ** 0.2)
-            * (1.2 * np.sin(angle_array) ** 2 - np.cos(angle_array) ** 2)
+        -(
+            calc_alongshore_transport_k()
+            / (h_b_crit + d_sf)
+            * wave_height ** 2.4
+            * wave_period ** 0.2
+        )
+        * 365
+        * 24
+        * 3600
+        * (np.cos(angle_array) ** 0.2)
+        * (1.2 * np.sin(angle_array) ** 2 - np.cos(angle_array) ** 2)
     )
 
     # KA NOTE: the "same" method differs in Matlab and Numpy; here we pad and slice out the "same" equivalent
@@ -102,13 +102,14 @@ def old_calc_coast_diffusivity(
     conv = np.convolve(wave_pdf(angle_array) * np.deg2rad(step), diff, mode="full")
     npad = len(diff) - 1
     first = npad - npad // 2
-    coast_diff_phi0_theta = conv[first: first + len(angle_array)]
+    coast_diff_phi0_theta = conv[first : first + len(angle_array)]
 
     theta = np.rad2deg(shoreline_angles)
 
     coast_diff = coast_diff_phi0_theta[
         np.maximum(
             0,
+            # np.minimum(wave_climl, np.floor(89.5 - theta).astype(int)),
             np.minimum(wave_climl + 1, np.round(90 - theta).astype(int)),
         )
     ]  # is this the relative wave angle? note that this indexing doesn't work with bounds other than [-90,90]
@@ -117,7 +118,10 @@ def old_calc_coast_diffusivity(
 
     return coast_diff, coast_diff_phi0_theta
 
-def old_build_matrix(x_s, wave_distribution, dy=1.0, wave_height=1.0, wave_period=10.0, dt=1.0, x_s_dt=0):
+
+def old_build_matrix(
+    x_s, wave_distribution, dy=1.0, wave_height=1.0, wave_period=10.0, dt=1.0, x_s_dt=0
+):
 
     wave_climl = 180
     ny = len(x_s)
@@ -146,32 +150,33 @@ def old_build_matrix(x_s, wave_distribution, dy=1.0, wave_height=1.0, wave_perio
 
     theta = np.rad2deg(old_calc_shoreline_angles(x_s, spacing=dy))
 
-    # angle_array, step = np.linspace(-90.0, 90.0, wave_climl + 1, retstep=True)
-    # angle_array = np.deg2rad(angle_array)
-    angle_array, step = np.linspace(-89.5, 89.5, 180, retstep=True)
+    angle_array, step = np.linspace(-90.0, 90.0, wave_climl + 1, retstep=True)
+    # angle_array, step = np.linspace(-89.5, 89.5, 180, retstep=True)
     angle_array = np.deg2rad(angle_array)
 
     d_sf = 8.9 * wave_height
 
-    diff=(
-            -(
-                    calc_alongshore_transport_k()
-                    / (h_b_crit + d_sf)
-                    * wave_height ** 2.4
-                    * wave_period ** 0.2
-            )
-            * 365
-            * 24
-            * 3600
-            * (np.cos(angle_array) ** 0.2)
-            * (1.2 * np.sin(angle_array) ** 2 - np.cos(angle_array) ** 2)
+    diff = (
+        -(
+            calc_alongshore_transport_k()
+            / (h_b_crit + d_sf)
+            * wave_height ** 2.4
+            * wave_period ** 0.2
+        )
+        * 365
+        * 24
+        * 3600
+        * (np.cos(angle_array) ** 0.2)
+        * (1.2 * np.sin(angle_array) ** 2 - np.cos(angle_array) ** 2)
     )
 
     # KA NOTE: the "same" method differs in Matlab and Numpy; here we pad and slice out the "same" equivalent
-    conv = np.convolve(wave_distribution.pdf(angle_array) * np.deg2rad(step), diff, mode="full")
+    conv = np.convolve(
+        wave_distribution.pdf(angle_array) * np.deg2rad(step), diff, mode="full"
+    )
     npad = len(diff) - 1
     first = npad - npad // 2
-    coast_diff = conv[first: first + len(angle_array)]
+    coast_diff = conv[first : first + len(angle_array)]
 
     r_ipl = np.maximum(
         0,
@@ -179,6 +184,7 @@ def old_build_matrix(x_s, wave_distribution, dy=1.0, wave_height=1.0, wave_perio
             coast_diff[
                 np.maximum(
                     1,
+                    # np.minimum(wave_climl, np.floor(89.5 - theta).astype(int)),
                     np.minimum(wave_climl + 1, np.round(90 - theta).astype(int)),
                 )
             ]
@@ -193,12 +199,7 @@ def old_build_matrix(x_s, wave_distribution, dy=1.0, wave_height=1.0, wave_perio
 
     RHS = (
         x_s
-        + r_ipl
-        * (
-                x_s[np.r_[1:ny, 0]]
-                - 2 * x_s
-                + x_s[np.r_[ny - 1, 0 : ny - 1]]
-        )
+        + r_ipl * (x_s[np.r_[1:ny, 0]] - 2 * x_s + x_s[np.r_[ny - 1, 0 : ny - 1]])
         + x_s_dt  # I think this was dropped just for testing
     )
 
@@ -246,7 +247,9 @@ def test_inlet_alongshore_transport_old_to_new(angle, shoreline_angle):
         old_calc_inlet_alongshore_transport(
             angle, shoreline_angle=np.full(5, shoreline_angle)
         ),
-        calc_inlet_alongshore_transport(angle, shoreline_angle=np.full(5, shoreline_angle)),
+        calc_inlet_alongshore_transport(
+            angle, shoreline_angle=np.full(5, shoreline_angle)
+        ),
     )
 
 
@@ -443,9 +446,9 @@ def test_coast_diff_uniform_always_positive(func, angle):
 @pytest.mark.parametrize("func", (calc_coast_diffusivity, old_calc_coast_diffusivity))
 def test_coast_diff_symmetrical(func):
     dist = scipy.stats.uniform(loc=-np.pi / 2.0, scale=np.pi)
-    #angles = np.random.uniform(low=-np.pi / 2.0, high=np.pi / 2.0, size=500)
-    angles = np.linspace(-89.5, 89.5, 180)
-    angles = np.deg2rad(angles)
+    angles = np.random.uniform(low=-np.pi / 2.0, high=np.pi / 2.0, size=500)
+    # angles = np.linspace(-89.5, 89.5, 180)
+    # angles = np.deg2rad(angles)
     diff_pos, dummy = func(dist.pdf, angles)
     diff_neg, dummy = func(dist.pdf, -angles)
     assert_array_almost_equal(diff_pos, diff_neg)

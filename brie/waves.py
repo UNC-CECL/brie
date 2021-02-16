@@ -79,7 +79,7 @@ ashton = ashton_gen(a=0.0, b=1.0, name="ashton")
 
 class WaveAngleGenerator:
     def __init__(self, asymmetry=0.8, high_fraction=0.2, rng=None):
-    # def __init__(self, asymmetry=0.8, high_fraction=0.2, wave_climl=180, rng=None):
+        # def __init__(self, asymmetry=0.8, high_fraction=0.2, wave_climl=180, rng=None):
         """Generate incoming wave angles.
 
         Parameters

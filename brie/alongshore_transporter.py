@@ -215,13 +215,18 @@ def calc_inlet_alongshore_transport(
 
 
 def calc_coast_diffusivity(
-            wave_pdf, shoreline_angles, wave_height=1.0, wave_period=10.0, berm_ele=2.0, n_bins=180
-    ):
+    wave_pdf,
+    shoreline_angles,
+    wave_height=1.0,
+    wave_period=10.0,
+    berm_ele=2.0,
+    n_bins=181,
+):
     r"""Calculate sediment diffusion along a coastline. Corresponds to Equations 37-39 in NLT19 [1]_, with formulations from
     AM06 [2]_.
-    
+
     .. math::
-    
+
         D \left( \theta \right) = k/(H_b+D_T) \cdot H_0 ^{12/5} T^{1/5} \cdot [E \left( \phi_0 \right) * \psi \left( \phi_0 - \theta \right)]
 
     where :math:`E\left( \phi_0 \right)` is the normalized angular distribution of wave energy, and :math:`\psi \left( \phi_0 - \theta \right)` is the angle depdendence of diffusivity.
@@ -249,33 +254,33 @@ def calc_coast_diffusivity(
     berm_ele: float, optional
         Berm elevation [m]
     n_bins: float, optional
-        The number of bins used for the wave resolution: if 180,
+        The number of bins used for the wave resolution: if 181 and [-90,90] in angle array below,
         the wave angles are in the middle of the bins,
         symmetrical about zero, spaced by 1 degree
     """
 
-    all_angles, step = np.linspace(-89.5, 89.5, n_bins, retstep=True)
-    all_angles = np.deg2rad(all_angles)
-    # all_angles, step = np.linspace(-np.pi / 2.0, np.pi / 2.0, 181, retstep=True)
+    # all_angles, step = np.linspace(-89.5, 89.5, n_bins, retstep=True)
+    # all_angles = np.deg2rad(all_angles)
+    all_angles, step = np.linspace(-np.pi / 2.0, np.pi / 2.0, n_bins, retstep=True)
 
     d_sf = 8.9 * wave_height
 
-    e_phi_0 = wave_pdf(all_angles) * np.deg2rad(step)
-    # e_phi_0 = wave_pdf(all_angles) * step
+    # e_phi_0 = wave_pdf(all_angles) * np.deg2rad(step)
+    e_phi_0 = wave_pdf(all_angles) * step
 
     # KA: don't understand the negative here, but it works
-    diff_phi0_theta= (
-            -(
-                    AlongshoreTransporter.K
-                    / (berm_ele + d_sf)
-                    * wave_height ** 2.4
-                    * wave_period ** 0.2
-            )
-            * SECONDS_PER_YEAR
-            # * (np.cos(delta_angles) ** 0.2)
-            # * (1.2 * np.sin(delta_angles) ** 2 - np.cos(delta_angles) ** 2),
-            * (np.cos(all_angles) ** 0.2)
-            * (1.2 * np.sin(all_angles) ** 2 - np.cos(all_angles) ** 2)
+    diff_phi0_theta = (
+        -(
+            AlongshoreTransporter.K
+            / (berm_ele + d_sf)
+            * wave_height ** 2.4
+            * wave_period ** 0.2
+        )
+        * SECONDS_PER_YEAR
+        # * (np.cos(delta_angles) ** 0.2)
+        # * (1.2 * np.sin(delta_angles) ** 2 - np.cos(delta_angles) ** 2),
+        * (np.cos(all_angles) ** 0.2)
+        * (1.2 * np.sin(all_angles) ** 2 - np.cos(all_angles) ** 2)
     )
 
     # we convolve the normalized angular distribution of wave energy with the (relative wave) angle dependence
@@ -286,11 +291,15 @@ def calc_coast_diffusivity(
     # KA: the "same" method differs in Matlab and Numpy; here we pad and slice out the "same" equivalent
     npad = len(diff_phi0_theta) - 1
     first = npad - npad // 2
-    coast_diff_phi0_theta = y[first: first + len(e_phi_0)]  # this is D above, for all relative wave angles
+    coast_diff_phi0_theta = y[
+        first : first + len(e_phi_0)
+    ]  # this is D above, for all relative wave angles
 
     # KA: why minus shoreline angles? I think because coast_diff_phi0_theta assumes a straight coastline (theta = 0) and we need to
     # evaluate at phi_0 - theta (i.e., the relative wave angle array for a non-straight shoreline)
-    coast_diff = np.interp(-shoreline_angles, all_angles, coast_diff_phi0_theta)  # this is D above, evaluated at theta
+    coast_diff = np.interp(
+        -shoreline_angles, all_angles, coast_diff_phi0_theta
+    )  # this is D above, evaluated at theta
     # return np.interp(shoreline_angles, all_angles, y) * np.sign(-wave_angle)
     # return np.interp(-wave_angle, all_angles, y)  # * np.sign(-wave_angle)
 
@@ -341,7 +350,15 @@ def _build_tridiagonal_matrix(diagonal, lower=None, upper=None):
     return mat
 
 
-def _build_matrix(shoreline_x, wave_distribution, dy=1.0, wave_height=1.0, wave_period=10.0, dt=1.0, dx_dt=0):
+def _build_matrix(
+    shoreline_x,
+    wave_distribution,
+    dy=1.0,
+    wave_height=1.0,
+    wave_period=10.0,
+    dt=1.0,
+    dx_dt=0,
+):
     r"""UPDATE THIS
 
     Parameters
@@ -367,7 +384,7 @@ def _build_matrix(shoreline_x, wave_distribution, dy=1.0, wave_height=1.0, wave_
     coast_diff, _ = calc_coast_diffusivity(
         wave_distribution.pdf,
         # np.pi / 2.0 - shoreline_angles, # Use shoreline angles???
-        #-shoreline_angles,  # Use shoreline angles??? # KA: I don't think this should be negative
+        # -shoreline_angles,  # Use shoreline angles??? # KA: I don't think this should be negative
         shoreline_angles,
         wave_height=wave_height,
         wave_period=wave_period,
@@ -375,8 +392,7 @@ def _build_matrix(shoreline_x, wave_distribution, dy=1.0, wave_height=1.0, wave_
 
     # this is beta in Equation 41 of NLT19
     # NOTE: Jaap updated on May 27, 2020 to force shoreline diffusivity to be greater than zero. Not sure I understand
-    # why diffusivity needs to be greater than zero (it doesn't have to be theoretically), but we don't get smoothing of
-    # bumps without it
+    # why diffusivity needs to be greater than zero (it doesn't have to be theoretically).
     # r_ipl = np.clip(
     #     coast_diff
     #     * dt
@@ -390,15 +406,15 @@ def _build_matrix(shoreline_x, wave_distribution, dy=1.0, wave_height=1.0, wave_
     mat = _build_tridiagonal_matrix(1.0 + 2.0 * r_ipl, lower=-r_ipl, upper=-r_ipl)
 
     rhs = (
-            shoreline_x
-            + r_ipl
-            * np.diff(
-                shoreline_x,
-                n=2,
-                prepend=shoreline_x[-1:],
-                append=shoreline_x[:1],
-            )
-            + dx_dt
+        shoreline_x
+        + r_ipl
+        * np.diff(
+            shoreline_x,
+            n=2,
+            prepend=shoreline_x[-1:],
+            append=shoreline_x[:1],
+        )
+        + dx_dt
     )
 
     return mat.tocsc(), rhs, r_ipl
@@ -418,38 +434,38 @@ class AlongshoreTransporter:
     K = calc_alongshore_transport_k()
 
     def __init__(
-            self,
-            shoreline_x,
-            alongshore_section_length=1.0,
-            time_step=1.0,
-            change_in_shoreline_x=0.0,
-            wave_height=1.0,
-            wave_period=10.0,
-            wave_angle=0.0,
-            wave_distribution=None,
+        self,
+        shoreline_x,
+        alongshore_section_length=1.0,
+        time_step=1.0,
+        change_in_shoreline_x=0.0,
+        wave_height=1.0,
+        wave_period=10.0,
+        wave_angle=0.0,
+        wave_distribution=None,
     ):
         """The AlongshoreTransporter module.
 
-                Parameters
-                ----------
-                shoreline_x: array of float
-                    A shoreline position [m].
-                alongshore_section_length: float, optional
-                    Length of each alongshore section [m].
-                time_step: float, optional
-                    Time step of the numerical model [y].
-                change_in_shoreline_x: float or array of float, optional
-                    Change in shoreline x position (accretion/erosion) [m].
-                wave_height: float, optional
-                    Mean offshore significant wave height [m].
-                wave_period: float, optional
-                    Mean wave period [s].
-                wave_angle: float or array of float, optional
-                    Incoming wave angle relative to local shoreline normals [rad]. That is, a
-                    value of 0 means approaching waves are normal to the coast, negative
-                    values means waves approaching from the right, and positive from
-                    the left [deg]
-                wave_distribution: a scipy distribution
+        Parameters
+        ----------
+        shoreline_x: array of float
+            A shoreline position [m].
+        alongshore_section_length: float, optional
+            Length of each alongshore section [m].
+        time_step: float, optional
+            Time step of the numerical model [y].
+        change_in_shoreline_x: float or array of float, optional
+            Change in shoreline x position (accretion/erosion) [m].
+        wave_height: float, optional
+            Mean offshore significant wave height [m].
+        wave_period: float, optional
+            Mean wave period [s].
+        wave_angle: float or array of float, optional
+            Incoming wave angle relative to local shoreline normals [rad]. That is, a
+            value of 0 means approaching waves are normal to the coast, negative
+            values means waves approaching from the right, and positive from
+            the left [deg]
+        wave_distribution: a scipy distribution
         """
 
         self._shoreline_x = np.asarray(shoreline_x, dtype=float)
@@ -532,7 +548,6 @@ class AlongshoreTransporter:
         self._shoreline_x[:] = scipy.sparse.linalg.spsolve(mat, rhs)
 
         # calc_shoreline_angles(self._shoreline_x, self._dy, out=self._shoreline_angles)
-
 
     @property
     def shoreline_x(self):
