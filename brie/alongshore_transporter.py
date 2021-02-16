@@ -133,7 +133,7 @@ def calc_shoreline_angles(y, spacing=1.0, out=None):
 
 
 def calc_coast_qs(wave_angle, wave_height=1.0, wave_period=10.0):
-    """Calculate coastal alongshore sediment transport for a given incoming wave angle.
+    r"""Calculate coastal alongshore sediment transport for a given incoming wave angle.
 
     Parameters
     ----------
