@@ -317,19 +317,21 @@ def _build_tridiagonal_matrix(diagonal, lower=None, upper=None):
     Examples
     --------
     >>> from brie.alongshore_transporter import _build_tridiagonal_matrix
-    >>> _build_tridiagonal_matrix([1, 2, 3, 4]).toarray()
-    array([[1, 1, 0, 1],
-           [2, 2, 2, 0],
-           [0, 3, 3, 3],
-           [4, 0, 4, 4]])
+    >>> _build_tridiagonal_matrix([1.0, 2.0, 3.0, 4.0]).toarray()
+    array([[1., 1., 0., 1.],
+           [2., 2., 2., 0.],
+           [0., 3., 3., 3.],
+           [4., 0., 4., 4.]])
 
     >>> _build_tridiagonal_matrix(
-    ...     [1, 2, 3, 4], lower=[11, 12, 13, 14], upper=[21, 22, 23, 24]
+    ...     [1.0, 2.0, 3.0, 4.0],
+    ...     lower=[11.0, 12.0, 13.0, 14.0],
+    ...     upper=[21.0, 22.0, 23.0, 24.0],
     ... ).toarray()
-    array([[ 1, 21,  0, 11],
-           [12,  2, 22,  0],
-           [ 0, 13,  3, 23],
-           [24,  0, 14,  4]])
+    array([[ 1., 21.,  0., 11.],
+           [12.,  2., 22.,  0.],
+           [ 0., 13.,  3., 23.],
+           [24.,  0., 14.,  4.]])
     """
     if lower is None:
         lower = diagonal
