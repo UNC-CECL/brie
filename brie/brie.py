@@ -8,9 +8,16 @@ from .alongshore_transporter import calc_alongshore_transport_k
 from .waves import WaveAngleGenerator
 
 
-def inlet_fraction(self, a, b, c, d, I):
+def inlet_fraction(a, b, c, d, I):
     """what are the inlet fractions"""
     return a + (b / (1 + c * (I ** d)))
+
+
+SECONDS_PER_YEAR = 3600.0 * 24.0 * 365.0
+
+
+class BrieError(Exception):
+    pass
 
 
 class Brie:
@@ -92,7 +99,7 @@ class Brie:
             Density of sea water [kg/m^3].
         tide_amplitude: float, optional
             Amplitude of tide [m].
-        tide_frequence: float, optional
+        tide_frequency: float, optional
             Tidal frequency [rad/s].
         back_barrier_marsh_fraction: float, optional
             Percent of backbarrier covered by marsh and does not contribute to tidal prism.
@@ -156,7 +163,7 @@ class Brie:
         self._wave_period = wave_period
         self._wave_asym = wave_asymmetry
         self._wave_high = wave_angle_high_fraction
-        self._wave_angle = 0.0  # the default initial wave angle
+        self._wave_angle = wave_angle  # the default initial wave angle
 
         # alongshore distribution of wave energy
         self._wave_climl = int(180.0 / wave_angle_resolution)
@@ -206,28 +213,28 @@ class Brie:
         self._inlet_max = 100  # maximum number of inlets (mostly for debugging)
         self._marsh_cover = back_barrier_marsh_fraction
 
-        # set the dependent variables
-        if self._bseed:
-            self.dependent(wave_angle=wave_angle, xs=xs)
-        else:
-            self.dependent()
+        # # set the dependent variables
+        # if self._bseed:
+        #     self.dependent(wave_angle=wave_angle, xs=xs)
+        # else:
+        #     self.dependent()
 
-    @classmethod
-    def from_yaml(cls, filepath):
-        with open(filepath, "r") as fp:
-            params = yaml.safe_load(fp)
-        return cls(**params)
+        # @classmethod
+        # def from_yaml(cls, filepath):
+        #     with open(filepath, "r") as fp:
+        #         params = yaml.safe_load(fp)
+        #     return cls(**params)
 
-    def dependent(self, wave_angle=None, xs=None):
-        """Set the internal variables that depend on the input parameters.
-
-        Parameters
-        ----------
-        wave_angle: float, optional
-            If provided, the current incoming wave angle [deg]. Added for comparison to Matlab version of BRIE.
-        xs: float, optional
-            If provided, the current position of the shoreline [m].
-        """
+        # def dependent(self, wave_angle=None, xs=None):
+        #     """Set the internal variables that depend on the input parameters.
+        #
+        #     Parameters
+        #     ----------
+        #     wave_angle: float, optional
+        #         If provided, the current incoming wave angle [deg]. Added for comparison to Matlab version of BRIE.
+        #     xs: float, optional
+        #         If provided, the current position of the shoreline [m].
+        #     """
 
         self._RNG = np.random.default_rng(seed=1973)  # random number generator
 
@@ -290,7 +297,7 @@ class Brie:
             if xs is None or wave_angle is None:
                 raise ValueError("if bseed is True, xs and wave_angle must be provided")
             self._x_s = xs
-            self._wave_angle = wave_angle
+            # self._wave_angle = wave_angle  # this is redundant
         else:
             self._x_s = (
                 self._RNG.random(self._ny) + self._d_sf / self._s_sf_eq + self._x_t
@@ -320,16 +327,20 @@ class Brie:
             100, self._dy * self._ny, self._dy
         )  # alongshore array [KA: just used for plotting]
 
-        self._angle_array = np.deg2rad(
-            np.linspace(-90.0, 90.0, self._wave_climl)
+        self._angle_array, step = np.linspace(
+            -90.0, 90.0, self._wave_climl, retstep=True
         )  # array of resolution angles for wave climate [radians]
+        self._angle_array = np.deg2rad(
+            self._angle_array
+        )  # KA: Jaap's version is <1 degree per bin, so also use here
 
         self._angles = WaveAngleGenerator(
-            asymmetry=self._wave_asym,
-            high_fraction=self._wave_high,
+            asymmetry=self._wave_asym, high_fraction=self._wave_high
         )  # wave angle generator for each time step for calculating Qs_in
 
-        wave_pdf = self._angles.pdf(np.rad2deg(self._angle_array))  # wave climate pdf
+        wave_pdf = self._angles.pdf(self._angle_array) * np.deg2rad(
+            step
+        )  # wave climate pdf, needs input in radians
 
         self._coast_qs = (
             self._wave_height ** 2.4
@@ -438,7 +449,8 @@ class Brie:
         c_idx = np.uint8(np.zeros((self._ny, 1000)))  # noqa: F841
         bar_strat_x = (  # noqa: F841
             self._x_b[0] + 1000
-        )  # cross-shore location where to record stratigraphy. I guess would be better to do it at one instant in time rather than space?
+        )  # cross-shore location where to record stratigraphy. I guess would be better to do it at one instant
+        # in time rather than space?
         self._x_t_save = np.int32(
             np.zeros((self._ny, np.size(np.arange(0, self._nt, self._dtsave))))
         )
@@ -472,6 +484,12 @@ class Brie:
         self._x_b_dt = np.zeros(self._ny)
         self._x_s_dt = np.zeros(self._ny)
         self._h_b_dt = np.zeros(self._ny)
+
+    @classmethod
+    def from_yaml(cls, filepath):
+        with open(filepath, "r") as fp:
+            params = yaml.safe_load(fp)
+        return cls(**params)
 
     @property
     def time_index(self):
@@ -558,16 +576,6 @@ class Brie:
         self._h_b = value
 
     @property
-    def wave_angle(self):
-        return self._wave_angle
-
-    @wave_angle.setter
-    def wave_angle(self, new_angle):
-        if new_angle > 90.0 or new_angle < -90:
-            raise ValueError("wave angle must be between -90 and 90 degrees")
-        self._wave_angle = new_angle
-
-    @property
     def h_b_save(self):
         return self._h_b_save
 
@@ -591,6 +599,16 @@ class Brie:
     def s_sf_eq(self):
         return self._s_sf_eq
 
+    @property
+    def wave_angle(self):
+        return self._wave_angle
+
+    @wave_angle.setter
+    def wave_angle(self, new_angle):
+        if new_angle > 90.0 or new_angle < -90:
+            raise ValueError("wave angle must be between -90 and 90 degrees")
+        self._wave_angle = new_angle
+
     def u(self, a_star, gam, ah_star):
         """new explicit relationship between boundary conditions and inlet area"""
         return np.sqrt(self._g * self._a0) * np.sqrt(
@@ -604,7 +622,8 @@ class Brie:
         )
 
     def a_star_eq_fun(self, ah_star, gam, u_e_star):
-        """pretty function showing how the cross-sectional area varies with different back barrier configurations gamma"""
+        """pretty function showing how the cross-sectional area varies with different back barrier
+        configurations gamma"""
         return np.real(
             (2 * ah_star) / 3
             + (
@@ -762,37 +781,36 @@ class Brie:
                 / np.pi
             )
 
-            wave_ang = self._wave_angle
             # wave direction
+            # wave_ang = self._wave_angle
             if self._bseed:
                 wave_ang = self._wave_angle[self._time_index - 1]
 
-            # else:
-            #     # wave_ang = np.nonzero(self._wave_cdf > np.random.rand())[0][] # just get the first nonzero element
-            #     wave_ang = int(self._angles.next())  # KA: use the wave generator!
+            else:
+                # wave_ang = np.nonzero(self._wave_cdf > np.random.rand())[0][] # just get the first nonzero element
+                wave_ang = int(
+                    np.rad2deg(self._angles.next())
+                )  # KA: use the wave generator (which outputs in radians)
 
             # sed transport this timestep for given wave angle (KA: NOTE, -1 indexing is for Python)
-            try:
-                Qs = (
-                    self._dt
-                    * self._coast_qs[
-                        np.minimum(
-                            self._wave_climl,
-                            np.maximum(
-                                1,
-                                np.round(
-                                    self._wave_climl
-                                    - wave_ang
-                                    - (self._wave_climl / 180 * theta)
-                                    + 1
-                                ),
+            Qs = (
+                self._dt
+                * self._coast_qs[
+                    np.minimum(
+                        self._wave_climl,
+                        np.maximum(
+                            1,
+                            np.round(
+                                self._wave_climl
+                                - wave_ang
+                                - (self._wave_climl / 180 * theta)
+                                + 1
                             ),
-                        ).astype(int)
-                        - 1
-                    ]
-                ).astype(float)
-            except ValueError:
-                raise ValueError((self._wave_climl, wave_ang.shape, theta))
+                        ),
+                    ).astype(int)
+                    - 1
+                ]
+            ).astype(float)
 
         if self._inlet_model_on:
 
@@ -1078,9 +1096,9 @@ class Brie:
                 # beta[j - 1] = inlet_fraction(self, 0, 0.9, 10, 3, I)
                 # beta_r[j - 1] = inlet_fraction(self, 0, 0.9, 0.9, -3, I)
 
-                delta[j - 1] = inlet_fraction(self, 0, 1, 3, -3, I)
-                beta[j - 1] = inlet_fraction(self, 0, 1, 10, 3, I)
-                beta_r[j - 1] = inlet_fraction(self, 0, 0.9, 0.9, -3, I)
+                delta[j - 1] = inlet_fraction(0, 1, 3, -3, I)
+                beta[j - 1] = inlet_fraction(0, 1, 10, 3, I)
+                beta_r[j - 1] = inlet_fraction(0, 0.9, 0.9, -3, I)
 
                 #            #{
                 #            humans affect inlets?
@@ -1236,7 +1254,7 @@ class Brie:
 
             dv = np.r_[-r_ipl[-1], -r_ipl[1:], 1 + 2 * r_ipl, -r_ipl[0:-1], -r_ipl[0]]
             A = csr_matrix((dv, (self._di, self._dj)))
-            # A = sps.sparse.csr_matrix((dv, (self._di, self._dj))).toarray()  # KA: spot checked, but probably worth a closer look
+            # A = sps.sparse.csr_matrix((dv, (self._di, self._dj))).toarray()
 
             RHS = (
                 self._x_s
@@ -1260,7 +1278,8 @@ class Brie:
         self._x_b = self._x_b + self._x_b_dt + self._x_b_fld_dt
         self._h_b = self._h_b + self._h_b_dt
 
-        # save subset of BRIE variables (KA: I changed this from mod = 1 to mod = 0 to allow for saving every 1 timestep)
+        # save subset of BRIE variables
+        # (KA: I changed this from mod = 1 to mod = 0 to allow for saving every 1 timestep)
         """save subset of BRIE variables"""
         if np.mod(self._time_index, self._dtsave) == 0:
             self._x_t_save[

@@ -70,6 +70,25 @@ def test_ashton_cdf():
     assert dist.cdf(90.0) == pytest.approx(1.0)
 
 
+def test_ashton_cdf_radians():
+    dist = ashton(a=0.5, h=0.5, loc=-np.pi / 2, scale=np.pi)
+    assert dist.cdf(-np.pi / 2) == pytest.approx(0.0)
+    assert dist.cdf(np.pi / 2) == pytest.approx(1.0)
+
+    assert dist.cdf(np.deg2rad(-91.0)) == pytest.approx(0.0)
+    assert dist.cdf(np.deg2rad(91.0)) == pytest.approx(1.0)
+
+    assert dist.cdf(-np.pi / 4) == pytest.approx(0.25)
+    assert dist.cdf(0.0) == pytest.approx(0.5)
+    assert dist.cdf(np.pi / 4) == pytest.approx(0.75)
+
+    dist = ashton(
+        a=np.random.random(), h=np.random.random(), loc=-np.pi / 2, scale=np.pi
+    )
+    assert dist.cdf(-np.pi / 2) == pytest.approx(0.0)
+    assert dist.cdf(np.pi / 2) == pytest.approx(1.0)
+
+
 def test_waves_min_and_max():
 
     waves = WaveAngleGenerator()
@@ -134,3 +153,23 @@ def test_cdf():
     )
     assert waves.cdf(-np.pi / 2.0) == pytest.approx(0.0)
     assert waves.cdf(np.pi / 2.0) == pytest.approx(1.0)
+
+
+def test_ashton_vs_WaveAngleGenerator():
+
+    # i.e., they are only equal if you don't include the boundaries
+    angle_array, step = np.linspace(
+        -89.5, 89.5, 180, retstep=True
+    )  # gives one point per degree
+    # angle_array, step = np.linspace(-90.0, 90.0, 5, retstep=True)
+    # angle_array, step = np.linspace(-90.0, 90.0, 181, retstep=True) # need 181 for one point per degree
+
+    dist = ashton(a=0.8, h=0.2, loc=-90, scale=180)
+    ashton_pdf = dist.pdf(angle_array) * step
+    # area_under_curve, abserr = quad(dist.pdf, -90, 90)
+
+    waves = WaveAngleGenerator(asymmetry=0.8, high_fraction=0.2)
+    waves_pdf = waves.pdf(np.deg2rad(angle_array)) * np.deg2rad(step)
+    # area_under_curve, abserr = quad(waves.pdf, -np.pi / 2.0, np.pi / 2.0)
+
+    assert waves_pdf == pytest.approx(ashton_pdf)
