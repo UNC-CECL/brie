@@ -13,7 +13,8 @@ References
     1. Modeling of sand waves, flying spits, and capes. Journal of Geophysical Research: Earth Surface 111.F4 (2006).
 .. [3] P.D. Komar, 1998, Beach processes and sedimentation: Upper Saddle River, New Jersey, Prentice Hall , 544 p.
 .. [4] Jaap H. Nienhuis, Jorge Lorenzo Trueba; Simulating barrier island response to sea level rise with the barrier
-    island and inlet environment (BRIE) model v1.0 ; Geosci. Model Dev., 12, 4013–4030, 2019; https://doi.org/10.5194/gmd-12-4013-2019
+    island and inlet environment (BRIE) model v1.0 ; Geosci. Model Dev., 12, 4013–4030, 2019;
+    https://doi.org/10.5194/gmd-12-4013-2019
 
 
 Notes
@@ -132,88 +133,6 @@ def calc_shoreline_angles(y, spacing=1.0, out=None):
     return np.arctan2(np.diff(y, append=y[0]), spacing, out=out)  # dx/dy
 
 
-def calc_coast_qs(wave_angle, wave_height=1.0, wave_period=10.0):
-    r"""Calculate coastal alongshore sediment transport for a given incoming wave angle.
-
-    Parameters
-    ----------
-    wave_angle: float or array of float
-        Incoming wave angle relative to local shoreline normals [rad]. That is, a
-        value of 0 means approaching waves are normal to the coast, negative
-        values means waves approaching from the right, and positive from
-        the left.
-    wave_height: float, optional
-        Height of incoming waves [m].
-    wave_period: float, optional
-        Period of incoming waves [s].
-
-    Returns
-    -------
-    float or array of float
-        Coastal qs [m3 / yr]
-
-    Notes
-    -----
-
-    Alongshore sediment transport is computed using the CERC or Komar (Komar, 1998 [2]_ ) formula, reformulated into deep-water wave properties (Ashton and Murray, 2006 [3]_ ) by back-refracting the waves over shore-parallel contours, which yields:
-
-    .. math::
-
-        Q_s = K_1 \cdot H_s^{12/5} T^{1/5} \cos^{6/5}\left( \Delta \theta \right) \sin \left(\Delta \theta\right)
-
-    where :math:`H_s` is the offshore deep-water significant wave height (in meters), :math:`T` is the wave period (in seconds), and :math:`\Delta \theta` is the deep-water wave approach angle relative to the local shoreline orientation (rads).
-
-    References
-    ----------
-    .. [2] Komar P.D., 1998, Beach processes and sedimentation: Upper Saddle River, New Jersey, Prentice Hall , 544 p.
-
-    .. [3] Ashton A.D. Murray A.B., 2006, High-angle wave instability and emergent shoreline shapes: 1. Modeling of sand waves, flying spits, and capes: Journal of Geophysical Research , v. 111, F04011, doi:10.1029/2005JF000422.
-    """
-    return (
-        wave_height ** 2.4
-        * (wave_period ** 0.2)
-        * SECONDS_PER_YEAR
-        * AlongshoreTransporter.K
-        * (np.cos(wave_angle) ** 1.2)
-        * np.sin(wave_angle)
-    )  # [m3/yr]
-
-
-def calc_inlet_alongshore_transport(
-    wave_angle, shoreline_angle=0.0, wave_height=1.0, wave_period=10.0
-):
-    r"""Calculate alongshore transport along a coastline for a single wave angle. Only used in inlet calculations within
-    BRIE.
-
-    Parameters
-    ----------
-    wave_angle: float
-        Incoming wave angle as measured counter-clockwise from the
-        positive x-axis [rads].
-    shoreline_angle: float or array of float, optional
-        Angle of shoreline with respect to the positive x-axis [rads].
-    wave_height: float, optional
-        Incoming wave height [m].
-    wave_period: float, optional
-        Incoming wave period [s].
-
-    Returns
-    -------
-    float or array of float
-        Alongshore transport along the shoreline.
-    """
-    wave_angle_wrt_shoreline = np.clip(
-        # np.pi / 2.0 + shoreline_angle - wave_angle,
-        wave_angle - shoreline_angle,
-        a_min=-np.pi / 2.0,
-        a_max=np.pi / 2.0,
-    )
-
-    return calc_coast_qs(
-        wave_angle_wrt_shoreline, wave_height=wave_height, wave_period=wave_period
-    )
-
-
 def calc_coast_diffusivity(
     wave_pdf,
     shoreline_angles,
@@ -268,7 +187,8 @@ def calc_coast_diffusivity(
     # e_phi_0 = wave_pdf(all_angles) * np.deg2rad(step)
     e_phi_0 = wave_pdf(all_angles) * step
 
-    # KA: don't understand the negative here, but it works
+    # KA: don't understand the negative here, but it works (wait...did they accidentally just drop a negative in
+    # their equation printed in NLT19? I see a negative in AM06). Or is this just having to do with the convolution?
     diff_phi0_theta = (
         -(
             AlongshoreTransporter.K
@@ -280,7 +200,13 @@ def calc_coast_diffusivity(
         # * (np.cos(delta_angles) ** 0.2)
         # * (1.2 * np.sin(delta_angles) ** 2 - np.cos(delta_angles) ** 2),
         * (np.cos(all_angles) ** 0.2)
-        * (1.2 * np.sin(all_angles) ** 2 - np.cos(all_angles) ** 2)
+        * (
+            1.2 * np.sin(all_angles) ** 2
+            - np.cos(all_angles) ** 2
+            # np.cos(all_angles) ** 2
+            # - 1.2 * np.sin(all_angles) ** 2
+        )  # AH HA! THIS IS WHERE THE SHORELINE IS FLIPPED FROM AM06! sin^2 becomes positive and cos^2 becomes negative!
+        # it appears that there is a typo in both equations 37 and 38 in NLT19 (I should check the chain rule here)
     )
 
     # we convolve the normalized angular distribution of wave energy with the (relative wave) angle dependence
@@ -295,11 +221,9 @@ def calc_coast_diffusivity(
         first : first + len(e_phi_0)
     ]  # this is D above, for all relative wave angles
 
-    # KA: why minus shoreline angles? I think because coast_diff_phi0_theta assumes a straight coastline (theta = 0) and we need to
-    # evaluate at phi_0 - theta (i.e., the relative wave angle array for a non-straight shoreline)
-    coast_diff = np.interp(
-        -shoreline_angles, all_angles, coast_diff_phi0_theta
-    )  # this is D above, evaluated at theta
+    # evaluate coast_diff_phi0_theta at the relative wave angle for the average wave climate
+    # (i.e., phi_0 = 0, the dsitrbution mean)
+    coast_diff = np.interp(0 - shoreline_angles, all_angles, coast_diff_phi0_theta)
     # return np.interp(shoreline_angles, all_angles, y) * np.sign(-wave_angle)
     # return np.interp(-wave_angle, all_angles, y)  # * np.sign(-wave_angle)
 
@@ -311,7 +235,7 @@ def _build_tridiagonal_matrix(diagonal, lower=None, upper=None):
 
     Parameters
     ----------
-    values_at_node: array of float
+    diagonal: array of float
         Values to place along the diagonals.
 
     Examples
@@ -361,24 +285,32 @@ def _build_matrix(
     dt=1.0,
     dx_dt=0,
 ):
-    r"""UPDATE THIS
+    r"""Here we combine the functions above into a single callable function that 1) calculates the shoreline angles, 2)
+    uses those shoreline angles to calculate diffusivity, and 3) set up the nonlinear diffusion equation which can
+    be solved by inverting a tridiagonal matrix (Equation 41 in NLT19). Note that diffusivity is non-dimensionalized in
+    this equation.
 
     Parameters
     ----------
-    wave_angle: float
-        Incoming wave angle as measured counter-clockwise from the
-        positive x-axis [rads].
-    shoreline_angle: float or array of float, optional
-        Angle of shoreline with respect to the positive x-axis [rads].
+    shoreline_x: array of float
+        A shoreline position [m].
+    wave_distribution: a scipy distribution
+        Distribution representing the offshore deep-water wave climate. Typically the ashton distribution.
+    dy: float, optional
+        Alongshore discretization.
     wave_height: float, optional
         Incoming wave height [m].
     wave_period: float, optional
         Incoming wave period [s].
+    dt: float, optional
+        Time step of the numerical model [y].
+    dx_dt: float or array of float, optional
+        Change in shoreline x position (accretion/erosion) [m].
 
     Returns
     -------
-    float or array of float
-        Alongshore transport along the shoreline.
+    arrays
+        The tridiagonal matrix, right-hand-side, and non-dimensionalized diffusivity (r_ipl).
     """
 
     shoreline_angles = calc_shoreline_angles(shoreline_x, spacing=dy)
@@ -395,15 +327,13 @@ def _build_matrix(
     # this is beta in Equation 41 of NLT19
     # NOTE: Jaap updated on May 27, 2020 to force shoreline diffusivity to be greater than zero. Not sure I understand
     # why diffusivity needs to be greater than zero (it doesn't have to be theoretically).
-    # r_ipl = np.clip(
-    #     coast_diff
-    #     * dt
-    #     / (2.0 * dy ** 2),
-    #     a_min=0.0,
-    #     a_max=None,
-    # )
+    r_ipl = np.clip(
+        coast_diff * dt / (2.0 * dy ** 2),
+        a_min=0.0,
+        a_max=None,
+    )
 
-    r_ipl = coast_diff * dt / (2.0 * dy ** 2)
+    # r_ipl = coast_diff * dt / (2.0 * dy ** 2)
 
     mat = _build_tridiagonal_matrix(1.0 + 2.0 * r_ipl, lower=-r_ipl, upper=-r_ipl)
 
@@ -423,7 +353,6 @@ def _build_matrix(
 
 
 class AlongshoreTransporter:
-
     """Transport sediment along a coast.
 
     Examples
@@ -488,52 +417,9 @@ class AlongshoreTransporter:
 
         self._time = 0.0
 
-        # self._q_s = np.empty_like(shoreline_x)
-
-    # def _build_matrix(self, dt=1.0):
-    #     shoreline_angles = self._shoreline_angles
-    #
-    #
-    #     r_ipl = calc_coast_diffusivity(
-    #         self._wave_distribution.pdf,
-    #         # np.pi / 2.0 - shoreline_angles, # Use shoreline angles???
-    #         #- shoreline_angles,  # Use shoreline angles???
-    #         shoreline_angles, # Use shoreline angles???
-    #         wave_height=self._wave_height,
-    #         wave_period=self._wave_period,
-    #     ) * dt / (2.0 * self._dy ** 2)
-    #
-    #     mat = _build_tridiagonal_matrix(1.0 + 2.0 * r_ipl, lower=-r_ipl, upper=-r_ipl)
-    #
-    #     rhs = (
-    #             self._shoreline_x
-    #             + r_ipl
-    #             * np.diff(
-    #         self._shoreline_x,
-    #         n=2,
-    #         prepend=self._shoreline_x[-1:],
-    #         append=self._shoreline_x[:1],
-    #     )
-    #         # + self._x_s_dt
-    #     )
-    #
-    #     return mat.tocsc(), rhs
-
     def update(self):
 
         self._time += self._dt
-
-        # self._wave_angle = self._wave_distribution.rvs(size=1)
-
-        # self._q_s[:] = (
-        #     calc_inlet_alongshore_transport(
-        #         self._wave_angle,
-        #         shoreline_angle=self._shoreline_angles,
-        #         wave_height=self._wave_height,
-        #         wave_period=self._wave_period,
-        #     )
-        #     * dt
-        # )
 
         # calculates diffusivity and then returns the tridiagonal matrix and right-hand-side of Equation 41 in NLT19
         mat, rhs, _ = _build_matrix(
@@ -548,8 +434,6 @@ class AlongshoreTransporter:
 
         # invert the tridiagonal matrix to solve for the new shoreline position
         self._shoreline_x[:] = scipy.sparse.linalg.spsolve(mat, rhs)
-
-        # calc_shoreline_angles(self._shoreline_x, self._dy, out=self._shoreline_angles)
 
     @property
     def shoreline_x(self):
@@ -586,3 +470,13 @@ class AlongshoreTransporter:
     @property
     def shoreline_angles(self):
         return self._shoreline_angles
+
+    @property
+    def dx_dt(self):
+        return self._dx_dt
+
+    @dx_dt.setter
+    def dx_dt(self, new_val):
+        # if new_val <= 0.0:
+        #     raise ValueError("wave period must be positive")
+        self._dx_dt = new_val
