@@ -187,26 +187,24 @@ def calc_coast_diffusivity(
     # e_phi_0 = wave_pdf(all_angles) * np.deg2rad(step)
     e_phi_0 = wave_pdf(all_angles) * step
 
-    # KA: don't understand the negative here, but it works (wait...did they accidentally just drop a negative in
-    # their equation printed in NLT19? I see a negative in AM06). Or is this just having to do with the convolution?
+    # note that both cos^2 - sin^2 and sin^2 - cos^2 are used in the AM06 papers, and signs are flipped to account for
+    # this!
     diff_phi0_theta = (
-        -(
+        # -(
+        (
             AlongshoreTransporter.K
             / (berm_ele + d_sf)
             * wave_height ** 2.4
             * wave_period ** 0.2
         )
         * SECONDS_PER_YEAR
-        # * (np.cos(delta_angles) ** 0.2)
-        # * (1.2 * np.sin(delta_angles) ** 2 - np.cos(delta_angles) ** 2),
         * (np.cos(all_angles) ** 0.2)
         * (
-            1.2 * np.sin(all_angles) ** 2
-            - np.cos(all_angles) ** 2
-            # np.cos(all_angles) ** 2
-            # - 1.2 * np.sin(all_angles) ** 2
-        )  # AH HA! THIS IS WHERE THE SHORELINE IS FLIPPED FROM AM06! sin^2 becomes positive and cos^2 becomes negative!
-        # it appears that there is a typo in both equations 37 and 38 in NLT19 (I should check the chain rule here)
+            # 1.2 * np.sin(all_angles) ** 2
+            # - np.cos(all_angles) ** 2
+            np.cos(all_angles) ** 2
+            - 1.2 * np.sin(all_angles) ** 2
+        )
     )
 
     # we convolve the normalized angular distribution of wave energy with the (relative wave) angle dependence
@@ -325,8 +323,7 @@ def _build_matrix(
     )
 
     # this is beta in Equation 41 of NLT19
-    # NOTE: Jaap updated on May 27, 2020 to force shoreline diffusivity to be greater than zero. Not sure I understand
-    # why diffusivity needs to be greater than zero (it doesn't have to be theoretically).
+    # NOTE: Jaap updated on May 27, 2020 to force shoreline diffusivity to be greater than zero.
     r_ipl = np.clip(
         coast_diff * dt / (2.0 * dy ** 2),
         a_min=0.0,
