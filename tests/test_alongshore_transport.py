@@ -9,8 +9,11 @@ from brie.alongshore_transporter import (
     _build_tridiagonal_matrix,
     calc_alongshore_transport_k,
     calc_coast_diffusivity,
-    calc_coast_qs,
     calc_shoreline_angles,
+)
+
+from brie.inlet_spinner import (
+    calc_coast_qs,
     calc_inlet_alongshore_transport,
 )
 
