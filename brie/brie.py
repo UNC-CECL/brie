@@ -175,7 +175,9 @@ class Brie:
         # barrier model parameters
         ###############################################################################
 
-        self._slr = [sea_level_rise_rate] * time_step_count  # KA: made this a TS so I can replace with accelerated SLR
+        self._slr = [
+            sea_level_rise_rate
+        ] * time_step_count  # KA: made this a TS so I can replace with accelerated SLR
         self._s_background = xshore_slope
         self._w_b_crit = barrier_width_critical
         self._h_b_crit = barrier_height_critical
@@ -703,7 +705,9 @@ class Brie:
         # print('time_index=',self._time_index)
 
         # sea level
-        self._z = self._z + (self._dt * self._slr[self._time_index - 1])  # height of sea level
+        self._z = self._z + (
+            self._dt * self._slr[self._time_index - 1]
+        )  # height of sea level
         w = self._x_b - self._x_s  # barrier width
         d_b = np.minimum(
             self._bb_depth * np.ones(np.size(self._x_b)),
