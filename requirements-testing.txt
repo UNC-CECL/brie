@@ -2,3 +2,4 @@ bmi-tester
 pytest
 pytest-cov
 pytest-datadir
+wheel
