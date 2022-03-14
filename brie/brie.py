@@ -562,14 +562,6 @@ class Brie:
         self._x_b = value
 
     @property
-    def x_b_save(self):
-        return self._x_b_save
-
-    @x_b_save.setter
-    def x_b_save(self, value):
-        self._x_b_save = value
-
-    @property
     def h_b(self):
         return self._h_b
 
@@ -584,6 +576,38 @@ class Brie:
     @h_b_save.setter
     def h_b_save(self, value):
         self._h_b_save = value
+
+    @property
+    def x_b_save(self):
+        return self._x_b_save
+
+    @x_b_save.setter
+    def x_b_save(self, value):
+        self._x_b_save = value
+
+    @property
+    def x_s_save(self):
+        return self._x_s_save
+
+    @x_s_save.setter
+    def x_s_save(self, value):
+        self._x_s_save = value
+
+    @property
+    def x_t_save(self):
+        return self._x_t_save
+
+    @x_t_save.setter
+    def x_t_save(self, value):
+        self._x_t_save = value
+
+    @property
+    def s_sf_save(self):
+        return self._s_sf_save
+
+    @s_sf_save.setter
+    def s_sf_save(self, value):
+        self._s_sf_save = value
 
     @property
     def slr(self):
