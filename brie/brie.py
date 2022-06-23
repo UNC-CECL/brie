@@ -178,7 +178,9 @@ class Brie:
         # barrier model parameters
         ###############################################################################
 
-        self._slr = sea_level_rise_rate
+        self._slr = [
+            sea_level_rise_rate
+        ] * time_step_count  # KA: made this a TS so I can replace with accelerated SLR
         self._s_background = xshore_slope
         self._w_b_crit = barrier_width_critical
         self._h_b_crit = barrier_height_critical
@@ -510,14 +512,6 @@ class Brie:
         self._x_b = value
 
     @property
-    def x_b_save(self):
-        return self._x_b_save
-
-    @x_b_save.setter
-    def x_b_save(self, value):
-        self._x_b_save = value
-
-    @property
     def h_b(self):
         return self._h_b
 
@@ -532,6 +526,46 @@ class Brie:
     @h_b_save.setter
     def h_b_save(self, value):
         self._h_b_save = value
+
+    @property
+    def x_b_save(self):
+        return self._x_b_save
+
+    @x_b_save.setter
+    def x_b_save(self, value):
+        self._x_b_save = value
+
+    @property
+    def x_s_save(self):
+        return self._x_s_save
+
+    @x_s_save.setter
+    def x_s_save(self, value):
+        self._x_s_save = value
+
+    @property
+    def x_t_save(self):
+        return self._x_t_save
+
+    @x_t_save.setter
+    def x_t_save(self, value):
+        self._x_t_save = value
+
+    @property
+    def s_sf_save(self):
+        return self._s_sf_save
+
+    @s_sf_save.setter
+    def s_sf_save(self, value):
+        self._s_sf_save = value
+
+    @property
+    def slr(self):
+        return self._slr
+
+    @slr.setter
+    def slr(self, value):
+        self._slr = value
 
     @property
     def ny(self):
@@ -686,7 +720,7 @@ class Brie:
                 * Qsf
                 * (self._h_b + self._d_sf)
                 / (self._d_sf * (2 * self._h_b + self._d_sf))
-            ) + (2 * self._dt * self._slr / s_sf)
+            ) + (2 * self._dt * self._slr[self._time_index - 1] / s_sf)
             self._x_s_dt = 2 * Qow / ((2 * self._h_b) + self._d_sf) / (1 - ff) - (
                 4
                 * Qsf
@@ -694,7 +728,7 @@ class Brie:
                 / (((2 * self._h_b) + self._d_sf) ** 2)
             )
             self._x_b_dt = Qow_b / (self._h_b + d_b)
-            self._h_b_dt = (Qow_h / w) - (self._dt * self._slr)
+            self._h_b_dt = (Qow_h / w) - (self._dt * self._slr[self._time_index - 1])
 
             # how much q overwash w in total [m3/yr]
             self._Qoverwash[self._time_index - 1] = np.sum(self._dy * Qow_b / self._dt)
@@ -1143,7 +1177,7 @@ class Brie:
                 # fancy lightweight way to keep track of where inlets are in the model
                 # KA: note that this differs from matlab version, here we do this all
                 # in the for loop (but still [time step, inlet starting ID])
-                self._inlet_age.append(
+                self._inlet_age.append(  # KA: shouldn't this be time_index-1?
                     [self._time_index, self._inlet_idx[j - 1][0].astype("int32")]
                 )
 
