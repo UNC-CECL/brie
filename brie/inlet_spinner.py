@@ -401,6 +401,10 @@ def fluid_mechanics(
     return inlet_idx, inlet_idx_close_mat
 
 
+def morphodynamics_of_inlets():
+
+    return
+
 class InletSpinner:
     """Transport sediment along a coast.
 
@@ -571,6 +575,9 @@ class InletSpinner:
                 self._inlet_idx, self._ny
             )  # get rid of duplicates and neighbours
             # do "fluid mechanics" of inlets
+
+        # do the morphodynamics of inlets
+        morphdynamics_of_inlet()
 
     @property
     def wave_angle(self):

@@ -986,6 +986,7 @@ class Brie:
             #         int
             #     )  # get cell widths per inlet
 
+            # THIS IS WHERE KATHERINE LEFT OFF IN 2021 -- and where Lexi will pick up
             # KA: python object arrays to "mimic" Matlab cells for inlet tracking
             # in retrospect, probably didn't need objects. Empty list would have been fine.
             inlet_nex = np.empty(np.size(self._inlet_idx), dtype=object)
