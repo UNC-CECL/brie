@@ -27,9 +27,14 @@ import scipy.sparse
 from numpy.lib.scimath import power as cpower, sqrt as csqrt
 from .alongshore_transporter import calc_alongshore_transport_k, calc_shoreline_angles
 
+
 SECONDS_PER_YEAR = 3600.0 * 24.0 * 365.0
 g = scipy.constants.g
 
+
+def inlet_fraction(a, b, c, d, I):
+    """what are the inlet fractions"""
+    return a + (b / (1 + c * (I ** d)))
 
 def u(a_star, gam, ah_star, a0):
     """new explicit relationship between boundary conditions and inlet area"""
@@ -398,15 +403,266 @@ def fluid_mechanics(
     wi_eq = np.sqrt(ai_eq) / inlet_asp  # calculate width and depths
     di_eq = ai_eq / wi_eq
     wi_cell = np.ceil(wi_eq / dy).astype(int)  # get cell widths per inlet
-    return inlet_idx, inlet_idx_close_mat
+    return inlet_idx, inlet_idx_close_mat, wi_cell, di_eq, ai_eq, wi_eq
 
+def inlet_morphodynamics(
+        inlet_idx,
+        new_inlet,
+        time_index,
+        wi_cell,
+        ny,
+        dy,
+        x_b_fld_dt,
+        w,
+        Qs,
+        h_b,
+        di_eq,
+        d_b,
+        Qinlet,
+        rho_w,
+        u_e,
+        ai_eq,
+        wi_eq,
+        wave_height,
+        g,
+        x_b,
+        x_s,
+        x_s_dt,
+        w_b_crit,
+        omega0,
+        inlet_y,
+        inlet_age,
+        d_sf
+        ):
+
+    r"""
+        Parameters
+        ----------
+        inlet_idx: list of int
+            Indices of inlet locations
+        new_inlet: int
+            Index of the newest inlet
+        ny: int
+            Number of alongshore cells
+        wi_cell: int (list?)
+            Width of cell per inlet
+        x_b_fld_dt
+        h_b: float?
+            Barrier Height
+        di_eq
+        d_b
+
+        Returns
+        -------
+        array of integers
+            inlet_idx: indices of all inlets
+        """
+
+    # KA: python object arrays to "mimic" Matlab cells for inlet tracking
+    # in retrospect, probably didn't need objects. Empty list would have been fine.
+    inlet_nex = np.empty(np.size(inlet_idx))
+    inlet_prv = np.empty(np.size(inlet_idx))
+
+    # preallocate arrays for inlet migration and fractions based on I
+    migr_up, delta, beta, beta_r, alpha, alpha_r, delta_r, Qs_in = [
+        np.zeros(np.size(inlet_idx)).astype(float) for _ in range(8)
+    ]
+
+    # inlet morphodynamics per inlet (KA: again, j-1 here for python)
+    for j in np.arange(1, np.size(inlet_idx) + 1):
+
+        # breach sediment is added to the flood-tidal delta
+        if (
+                new_inlet.size > 0
+                and inlet_idx[j - 1] == new_inlet
+        ):  # KA: for python, need to check that the array isn't empty
+            # KA: here, Jaap allows the indexing to wrap such that a new
+            # inlet formed at the end of the model domain can deposit sediment
+            # at the start of the model domain; does this wrapping for all
+            # inlet dynamics (see other np.mods throughout code)
+            new_inlet_idx = np.mod(
+                new_inlet + np.r_[1: (wi_cell[j - 1] + 1)] - 1, ny
+            )
+            x_b_fld_dt[new_inlet_idx] = x_b_fld_dt[
+                                                  new_inlet_idx
+                                              ] + (
+                                                      (h_b[new_inlet] + di_eq[j - 1]) * w[new_inlet]
+                                              ) / (
+                                                  d_b[new_inlet]
+                                              )
+
+            Qinlet[time_index - 1] = Qinlet[
+                                                     time_index - 1
+                                                     ] + (
+                                                         (h_b[new_inlet] + d_b[new_inlet])
+                                                         * w[new_inlet]
+                                                         * wi_cell[j - 1]
+                                                         * dy
+                                                 )
+
+        # alongshore flux brought into inlet
+
+        # Qs was calculated in the ast_model_on (line 781) but that was commented out in Katherine's BRIE
+        Qs_in[j - 1] = Qs[inlet_idx[j - 1]]
+
+        # find cells of inlet, updrift barrier, and downdrift barrier
+        # KA: here, inlet_idx becomes a list of arrays, and again,
+        # inlets wrap around the edges
+        inlet_idx[j - 1] = np.mod(
+            inlet_idx[j - 1] + np.r_[1: (wi_cell[j - 1] + 1)] - 1,
+            ny,
+        ).astype(int)
+        inlet_nex[j - 1] = np.mod(inlet_idx[j - 1][-1] + 1, ny)
+        inlet_prv[j - 1] = np.mod(inlet_idx[j - 1][0] - 1, ny)
+
+        # find momentum balance of inlet to determine sediment
+        # distribution fractions
+        Mt = rho_w * u_e * u_e * ai_eq[j - 1]
+        Mw = rho_w / 16 * g * wave_height ** 2 * wi_eq[j - 1]
+        I = Mt / Mw * wi_eq[j - 1] / w[inlet_idx[j - 1][0]]
+        h_b[inlet_idx[j - 1]] = 0
+
+        # constrain to not widen
+        Ab_prv = w[inlet_prv[j - 1]] * (
+                h_b[inlet_idx[j - 1][0]] + di_eq[j - 1]
+        )
+        Ab_nex = w[inlet_nex[j - 1]] * (
+                h_b[inlet_nex[j - 1]] + di_eq[j - 1]
+        )
+
+        # do fld delta eq volume
+        Vfld = (
+                (
+                        x_b[inlet_idx[j - 1][0]]
+                        - x_s[inlet_idx[j - 1][0]]
+                        + w_b_crit
+                )
+                * wi_eq[j - 1]
+                * d_b[inlet_idx[j - 1][0]]
+        )
+        Vfld_max = 1e4 * (u_e * ai_eq[j - 1] / 2 / omega0) ** 0.37
+
+        # add fix to limit unrealistic flood-tidal delta size (based on
+        # johnson flood-tidal delta of florida 2006)
+        if Vfld > Vfld_max:
+            I = 0.1
+
+        # calculate fractions based on I (KA: added self here b/c otherwise it produced an error)
+        # version 1: original BRIE upload (shoreline not stable)
+        # delta[j - 1] = inlet_fraction(self, 0, 1, 3, -3, I)
+        # beta[j - 1] = inlet_fraction(self, 0, 1, 10, 3, I)
+        # beta_r[j - 1] = inlet_fraction(self, 0, 1, 0.9, -3, I)
+
+        # version 2: from Neinhuis and Ashton 2016 (updated May 27, 2020)
+        # NOTE, Jaap only changes beta_r in the Matlab version, so we will do the same here
+        # delta[j - 1] = inlet_fraction(self, 0.05, 0.95, 3, -3, I)
+        # beta[j - 1] = inlet_fraction(self, 0, 0.9, 10, 3, I)
+        # beta_r[j - 1] = inlet_fraction(self, 0, 0.9, 0.9, -3, I)
+
+        delta[j - 1] = inlet_fraction(0, 1, 3, -3, I)
+        beta[j - 1] = inlet_fraction(0, 1, 10, 3, I)
+        beta_r[j - 1] = inlet_fraction(0, 0.9, 0.9, -3, I)
+
+        #            #{
+        #            humans affect inlets?
+        #            delta(j) = 0;
+        #            beta(j) = 1;
+        #            beta_r(j) = 0;
+        #              #}
+
+        alpha[j - 1] = 1 - beta[j - 1] - delta[j - 1]
+        alpha_r[j - 1] = alpha[j - 1] * 0.6
+
+        if Vfld > Vfld_max:
+            delta_r[j - 1] = 0
+        else:
+            delta_r[j - 1] = (
+                                     (Ab_nex * alpha[j - 1]) - (Ab_prv * beta_r[j - 1])
+                             ) / Ab_prv
+
+        # use fractions to physically move inlets and fld-tidal detlas
+
+        # update fld delta, deposit sediment at 0 water depth
+        fld_delta = np.abs(Qs_in[j - 1]) * (
+                delta[j - 1] + delta_r[j - 1]
+        )  # KA: this seems low for my QC scenario, maybe come back to this
+        # remove sediment from the shoreface
+        inlet_sink = np.abs(Qs_in[j - 1]) * (1 - beta[j - 1] - beta_r[j - 1])
+        # spread fld tidal delta along one more cell alongshore in both directions
+        temp_idx = np.r_[
+            inlet_prv[j - 1], inlet_idx[j - 1], inlet_nex[j - 1]
+        ]
+
+        x_b_fld_dt[temp_idx] = x_b_fld_dt[temp_idx] + fld_delta / (
+                np.size(temp_idx) * dy
+        ) / (h_b[temp_idx] + d_b[temp_idx])
+
+        # migrate inlet indices (in m/dt)
+        migr_up[j - 1] = Qs_in[j - 1] * (alpha_r[j - 1] + alpha[j - 1]) / Ab_prv
+        #                migr_dw = (
+        #                    Qs_in[j - 1]
+        #                    * (alpha_r[j - 1] + beta_r[j - 1] + delta_r[j - 1])
+        #                    / Ab_nex
+        #                )
+
+        # calculate where in the grid cell the inlet is, and add the
+        # fractional migration to it
+        inlet_y[inlet_idx[j - 1][0]] = (
+                inlet_y[inlet_idx[j - 1][0]] + migr_up[j - 1] / dy
+        )
+
+        # how far are the inlets in their gridcell?
+        # (or is inlet_y>1 or <0 and should the inlet hop one grid cell?)
+        migr_int = np.floor(
+            inlet_y[inlet_idx[j - 1][0]]
+        )  # KA: unsure about these too
+        migr_res = np.mod(inlet_y[inlet_idx[j - 1][0]], 1)
+
+        # reset old grid cell
+        inlet_y[inlet_idx[j - 1][0]] = 0
+
+        # move inlet in gridcell
+        inlet_idx[j - 1] = np.mod(
+            inlet_idx[j - 1] + migr_int, ny
+        ).astype(int)
+
+        inlet_y[inlet_idx[j - 1][0]] = migr_res
+
+        # how much q flood tidal delta in total
+        Qinlet[time_index - 1] = (
+                Qinlet[time_index - 1] + inlet_sink
+        )  # m3 per time step
+
+        # add inlet sink to shoreline change (updated May 27, 2020 so that shoreline change from inlet sink
+        # now spread out along width of inlet +1 cell in both directions)
+        # self._x_s_dt[inlet_nex[j - 1]] = (
+        #         self._x_s_dt[inlet_nex[j - 1]]
+        #         + inlet_sink / (self._h_b[inlet_nex[j - 1]] + self._d_sf) / self._dy
+        # )
+        x_s_dt[temp_idx] = (
+                x_s_dt[temp_idx]
+                + inlet_sink
+                / (h_b[temp_idx] + d_sf)
+                / len(temp_idx)
+                / dy
+        )
+
+        # inlet age
+        # fancy lightweight way to keep track of where inlets are in the model
+        # KA: note that this differs from matlab version, here we do this all
+        # in the for loop (but still [time step, inlet starting ID])
+        inlet_age.append(  # KA: shouldn't this be time_index-1?
+            [time_index, inlet_idx[j - 1][0].astype("int32")]
+        )
+
+    return inlet_idx
 
 class InletSpinner:
     """Transport sediment along a coast.
 
     Examples
     --------
-    >>> from brie.inlet_spinner import InletSpinner
+    >>> from brie.lexi_inlet_spinner import InletSpinner
     >>> inlets = InletSpinner([0.0, 0.0, 1.0, 0.0, 0.0])
     >>> inlets.update()
     """
@@ -468,7 +724,7 @@ class InletSpinner:
         self._wave_period = wave_period
         self._wave_angle = wave_angle
         self._x_b = bay_shoreline_x
-        self._h_b = barrier_height
+        # self._h_b = barrier_height    #repeated
         self._nt = number_time_steps
         self._inlet_storm_frequency = inlet_storm_frequency
         self._create_inlet_now = False  # KA: added this boolean so we could be more flexible about when to add an inlet
