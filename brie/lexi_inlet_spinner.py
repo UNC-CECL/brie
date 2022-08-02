@@ -48,7 +48,6 @@ def u(a_star, gam, ah_star, a0):
         )
     )
 
-
 def a_star_eq_fun(ah_star, gam, u_e_star):
     """pretty function showing how the cross-sectional area varies with different back barrier
     configurations gamma"""
@@ -117,7 +116,6 @@ def a_star_eq_fun(ah_star, gam, u_e_star):
         )
     )
 
-
 def calc_coast_qs(wave_angle, wave_height=1.0, wave_period=10.0):
     r"""Calculate coastal alongshore sediment transport for a given incoming wave angle.
 
@@ -164,7 +162,6 @@ def calc_coast_qs(wave_angle, wave_height=1.0, wave_period=10.0):
         * np.sin(wave_angle)
     )  # [m3/yr]
 
-
 def calc_inlet_alongshore_transport(
     wave_angle, shoreline_angle=0.0, wave_height=1.0, wave_period=10.0
 ):
@@ -198,7 +195,6 @@ def calc_inlet_alongshore_transport(
     return calc_coast_qs(
         wave_angle_wrt_shoreline, wave_height=wave_height, wave_period=wave_period
     )
-
 
 def create_inlet(inlet_idx, ny, dy, barrier_volume, min_inlet_separation=10000):
     r"""Creates a new inlet at the location of minimum barrier volume, but only if inlets are far enough away from
@@ -270,7 +266,6 @@ def create_inlet(inlet_idx, ny, dy, barrier_volume, min_inlet_separation=10000):
 
     return inlet_idx, new_inlet
 
-
 def organize_inlet(inlet_idx, ny):
     r"""Gets rid of duplicates and neighbours in the inlet_idx list; inlet_idx is reduced to just the first index of
     the inlet (still a list)
@@ -307,7 +302,6 @@ def organize_inlet(inlet_idx, ny):
     inlet_idx = inlet_idx_mat.astype(int).tolist()
 
     return inlet_idx, inlet_idx_mat
-
 
 def fluid_mechanics(
     inlet_idx,
@@ -406,60 +400,81 @@ def fluid_mechanics(
     return inlet_idx, inlet_idx_close_mat, wi_cell, di_eq, ai_eq, wi_eq
 
 def inlet_morphodynamics(
-        inlet_idx,
-        new_inlet,
-        time_index,
-        wi_cell,
-        ny,
-        dy,
-        x_b_fld_dt,
-        w,
-        Qs,
-        h_b,
-        di_eq,
-        d_b,
-        Qinlet,
-        rho_w,
-        u_e,
-        ai_eq,
-        wi_eq,
-        wave_height,
-        g,
-        x_b,
-        x_s,
-        x_s_dt,
-        w_b_crit,
-        omega0,
-        inlet_y,
-        inlet_age,
-        d_sf
-        ):
+    inlet_idx,
+    new_inlet,
+    time_index,
+    wi_cell,
+    ny,
+    dy,
+    x_b_fld_dt,
+    w,
+    Qs,
+    h_b,
+    di_eq,
+    d_b,
+    Qinlet,
+    rho_w,
+    ai_eq,
+    wi_eq,
+    wave_height,
+    x_b,
+    x_s,
+    x_s_dt,
+    w_b_crit,
+    omega0,
+    inlet_y,
+    inlet_age,
+    d_sf,
+    u_e=1
+    ):
 
     r"""
-        Parameters
-        ----------
-        inlet_idx: list of int
-            Indices of inlet locations
-        new_inlet: int
-            Index of the newest inlet
-        ny: int
-            Number of alongshore cells
-        wi_cell: int (list?)
-            Width of cell per inlet
-        x_b_fld_dt
-        h_b: float?
-            Barrier Height
-        di_eq
-        d_b
 
-        Returns
-        -------
-        array of integers
-            inlet_idx: indices of all inlets
-        """
+    Parameters
+    ----------
+    inlet_idx: list of int
+        Indices of inlet locations
+    new_inlet: int
+        Index of the newest inlet
+    ny: int
+        Number of alongshore cells
+    dy: float/int
+        length of alongshore section
+    wi_cell: int (list?)
+        Width of cell per inlet
+    x_b_fld_dt
+    h_b: float?
+        Barrier Height
+    di_eq
+    d_b
+    Qinlet,
+    rho_w: float
+        density of sea water
+    u_e: int/float
+        inlet equilibrium velocity [m/s]
+    ai_eq,
+    wi_eq,
+    wave_height,
+    x_b,
+    x_s,
+    x_s_dt,
+    w_b_crit:
+        critical barrier width (for drowning?)
+    omega0:
+        tide frequency
+    inlet_y,
+    inlet_age,
+    d_sf
+
+    Returns
+    -------
+    array of integers
+        inlet_idx: indices of all inlets
+    """
 
     # KA: python object arrays to "mimic" Matlab cells for inlet tracking
     # in retrospect, probably didn't need objects. Empty list would have been fine.
+    # LVB: got rid of object type specification
     inlet_nex = np.empty(np.size(inlet_idx))
     inlet_prv = np.empty(np.size(inlet_idx))
 
@@ -484,21 +499,21 @@ def inlet_morphodynamics(
                 new_inlet + np.r_[1: (wi_cell[j - 1] + 1)] - 1, ny
             )
             x_b_fld_dt[new_inlet_idx] = x_b_fld_dt[
-                                                  new_inlet_idx
-                                              ] + (
-                                                      (h_b[new_inlet] + di_eq[j - 1]) * w[new_inlet]
-                                              ) / (
-                                                  d_b[new_inlet]
-                                              )
+                  new_inlet_idx
+              ] + (
+                      (h_b[new_inlet] + di_eq[j - 1]) * w[new_inlet]
+              ) / (
+                  d_b[new_inlet]
+              )
 
             Qinlet[time_index - 1] = Qinlet[
-                                                     time_index - 1
-                                                     ] + (
-                                                         (h_b[new_inlet] + d_b[new_inlet])
-                                                         * w[new_inlet]
-                                                         * wi_cell[j - 1]
-                                                         * dy
-                                                 )
+             time_index - 1
+             ] + (
+                 (h_b[new_inlet] + d_b[new_inlet])
+                 * w[new_inlet]
+                 * wi_cell[j - 1]
+                 * dy
+             )
 
         # alongshore flux brought into inlet
 
@@ -655,7 +670,59 @@ def inlet_morphodynamics(
             [time_index, inlet_idx[j - 1][0].astype("int32")]
         )
 
-    return inlet_idx
+    # reset arrays
+    new_inlet = np.array([])
+    return inlet_idx, migr_up, delta, beta, alpha, Qs_in
+
+def inlet_statistics(
+    time_index,
+    dtsave,
+    inlet_nr,
+    inlet_idx,
+    inlet_migr,
+    migr_up,
+    delta,
+    inlet_delta,
+    beta,
+    inlet_beta,
+    alpha,
+    inlet_alpha,
+    Qs_in,
+    inlet_Qs_in,
+    ai_eq,
+    inlet_ai,
+    dt):
+
+    if (
+            np.mod(time_index, dtsave) == 0
+    ):  # KA: modified this from matlab version so that I can save every time step in python
+        # skip first time step (initial condition)
+        inlet_nr[
+            np.fix(time_index / dtsave).astype(int) - 1
+            ] = len(
+            inlet_idx
+        )  # number of inlets
+        inlet_migr[
+            np.fix(time_index / dtsave).astype(int) - 1
+            ] = np.mean(migr_up / dt)
+
+        if np.size(inlet_idx) != 0:
+            inlet_Qs_in[
+                np.fix(time_index / dtsave).astype(int) - 1
+                ] = np.mean(Qs_in)
+            inlet_alpha[
+                np.fix(time_index / dtsave).astype(int) - 1
+                ] = np.mean(alpha)
+            inlet_beta[
+                np.fix(time_index / dtsave).astype(int) - 1
+                ] = np.mean(beta)
+            inlet_delta[
+                np.fix(time_index / dtsave).astype(int) - 1
+                ] = np.mean(delta)
+            inlet_ai[
+                np.fix(time_index / dtsave).astype(int) - 1
+                ] = np.mean(ai_eq)
+    return inlet_nr, inlet_migr
 
 class InletSpinner:
     """Transport sediment along a coast.
@@ -674,6 +741,7 @@ class InletSpinner:
         shoreline_x,
         bay_shoreline_x,
         number_time_steps,
+        save_spacing,
         basin_width=None,
         inlet_storm_frequency=10,
         barrier_height=2.0,
@@ -719,12 +787,13 @@ class InletSpinner:
         self._h_b = barrier_height
         self._dy = alongshore_section_length
         self._dt = time_step
+        self._dtsave = save_spacing  # LVB
         self._dx_dt = change_in_shoreline_x
         self._wave_height = wave_height
         self._wave_period = wave_period
         self._wave_angle = wave_angle
         self._x_b = bay_shoreline_x
-        # self._h_b = barrier_height    #repeated
+        # self._h_b = barrier_height    #LVB: repeated
         self._nt = number_time_steps
         self._inlet_storm_frequency = inlet_storm_frequency
         self._create_inlet_now = False  # KA: added this boolean so we could be more flexible about when to add an inlet
@@ -739,6 +808,29 @@ class InletSpinner:
         # self._u_e = 1  # inlet equilibrium velocity [m/s]
         self._inlet_max = 100  # maximum number of inlets (mostly for debugging)
         self._marsh_cover = back_barrier_marsh_fraction
+
+        # inlet dependednt variables added by LVB
+        self._inlet_nr = np.uint16(
+            np.zeros(np.size(np.arange(0, self._nt, self._dtsave)))
+        )
+        self._inlet_migr = np.int16(
+            np.zeros(np.size(np.arange(0, self._nt, self._dtsave)))
+        )
+        self._inlet_Qs_in = np.float32(
+            np.zeros(np.size(np.arange(0, self._nt, self._dtsave)))
+        )
+        self._inlet_alpha = np.float32(
+            np.zeros(np.size(np.arange(0, self._nt, self._dtsave)))
+        )
+        self._inlet_beta = np.float32(
+            np.zeros(np.size(np.arange(0, self._nt, self._dtsave)))
+        )
+        self._inlet_delta = np.float32(
+            np.zeros(np.size(np.arange(0, self._nt, self._dtsave)))
+        )
+        self._inlet_ai = np.int32(
+            np.zeros(np.size(np.arange(0, self._nt, self._dtsave)))
+        )
 
         # other dependent variables
         self._ny = int(np.size(self._shoreline_x))
@@ -826,7 +918,23 @@ class InletSpinner:
             self._inlet_idx, self._inlet_idx_mat = organize_inlet(
                 self._inlet_idx, self._ny
             )  # get rid of duplicates and neighbours
-            # do "fluid mechanics" of inlets
+            self._inlet_idx, self._inlet_idx_close_mat, wi_cell, di_eq, ai_eq, wi_eq = fluid_mechanics(
+                self._inlet_idx, self._inlet_idx_mat, self._ny, self._dy, self._omega0, self._w, self._a0,
+                self._man_n, self._d_b, self._marsh_cover, self._basin_width, min_inlet_separation=10000
+            )  # do "fluid mechanics" of inlets
+            # in paper they do sediment transport next, but I think it is okay to do it whenever
+            self._inlet_idx, migr_up, delta, beta, alpha, Qs_in = inlet_morphodynamics(
+                self._inlet_idx, new_inlet, self._time_index, wi_cell, self._ny, self._dy, self._x_b_fld_dt, w,
+                self._q_s, self._h_b, di_eq, self._d_b, self._Qinlet, self._rho_w, ai_eq, wi_eq, self._wave_height,
+                self._x_b, self._x_s, self._x_s_dt, self._w_b_crit, self._omega0, self._inlet_y, self._inlet_age,
+                self._d_sf
+            )  # inlet morphodynamics
+            self._inlet_rn, self._inlet_migr = inlet_statistics(
+                self._time, self._dtsave,self._inlet_nr, self._inlet_idx, self._inlet_migr, migr_up, delta,
+                self._inlet_delta, beta, self._inlet_beta, alpha, self._inlet_alpha, Qs_in, self._inlet_Qs_in,
+                ai_eq, self._inlet_ai, self._dt
+            )  # inlet statistics
+
 
     @property
     def wave_angle(self):
