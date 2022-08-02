@@ -844,399 +844,400 @@ class Brie:
                 # add drowned barrier to list of inlets
                 self._inlet_idx.append(np.nonzero(self._barrier_volume < 0)[0])
 
-            # storm for new inlet every 10 year
-            if (
-                np.mod(self._t[self._time_index - 1], 10) < (self._dt / 2)
-                and np.size(self._inlet_idx) < self._inlet_max
-            ):
+            # # storm for new inlet every 10 year
+            # if (
+            #     np.mod(self._t[self._time_index - 1], 10) < (self._dt / 2)
+            #     and np.size(self._inlet_idx) < self._inlet_max
+            # ): NOT SURE THIS HAS BEEN INCORPORATED YET
 
-                # potential basin length
-                if np.size(self._inlet_idx) == 0:
-                    basin_length = self._Jmin + np.zeros(int(self._ny)).astype(float)
-                else:
-                    # KA: there might be a more sophisticated way to replicate
-                    # bsxfun (maybe utilizing the inherent broadcasting
-                    # capabilities in python), but alas ... had to divide into two operations
-                    self._inlet_idx_mat = np.hstack(self._inlet_idx)
-                    # KA: this one is confusing to debug if comparing to the same
-                    # inlet indices in Matlab because of the zero indexing in Python,
-                    # but note that it appears that Lmin/2 is applied in each direction
-                    basin_length = np.ravel(
-                        (
-                            np.array(([-self._ny, 0, self._ny]))
-                            + np.reshape(
-                                self._inlet_idx_mat + 1,
-                                (np.size(self._inlet_idx_mat), 1),
-                            )
-                        ).T
-                    )
-                    basin_length = np.amin(
-                        np.minimum(
-                            self._Jmin,
-                            2
-                            * self._dy
-                            * np.abs(
-                                np.arange(1, self._ny + 1, 1)
-                                - np.reshape(basin_length, (np.size(basin_length), 1))
-                            ),
-                        ),
-                        axis=0,
-                    )
+                ### START OF INLET SPINNER
+            #     # potential basin length
+            #     if np.size(self._inlet_idx) == 0:
+            #         basin_length = self._Jmin + np.zeros(int(self._ny)).astype(float)
+            #     else:
+            #         # KA: there might be a more sophisticated way to replicate
+            #         # bsxfun (maybe utilizing the inherent broadcasting
+            #         # capabilities in python), but alas ... had to divide into two operations
+            #         self._inlet_idx_mat = np.hstack(self._inlet_idx)
+            #         # KA: this one is confusing to debug if comparing to the same
+            #         # inlet indices in Matlab because of the zero indexing in Python,
+            #         # but note that it appears that Lmin/2 is applied in each direction
+            #         basin_length = np.ravel(
+            #             (
+            #                 np.array(([-self._ny, 0, self._ny]))
+            #                 + np.reshape(
+            #                     self._inlet_idx_mat + 1,
+            #                     (np.size(self._inlet_idx_mat), 1),
+            #                 )
+            #             ).T
+            #         )
+            #         basin_length = np.amin(
+            #             np.minimum(
+            #                 self._Jmin,
+            #                 2
+            #                 * self._dy
+            #                 * np.abs(
+            #                     np.arange(1, self._ny + 1, 1)
+            #                     - np.reshape(basin_length, (np.size(basin_length), 1))
+            #                 ),
+            #             ),
+            #             axis=0,
+            #         )
+            #
+            #     # basin width is simpler (cross-barrier basin width [m])
+            #     self._basin_width = np.maximum(
+            #         0, self._z / self._s_background - self._x_b
+            #     )
+            #
+            #     # find new inlets only if its far enough away from existing inlets
+            #     # KA: i.e., find the instances of Jmin
+            #     idx = np.nonzero(basin_length > (self._Jmin - 1))[0]
+            #
+            #     # KA: for Python, we need to check if there is an instance of Jmin,
+            #     # else an error will be thrown with argmin. If the number of inlets
+            #     # has been saturated, then we keep new_inlet empty from previous loop
+            #     if np.size(idx) != 0:
+            #         self._new_inlet = np.argmin(
+            #             self._barrier_volume[idx]
+            #         )  # KA: find the instance of Jmin at the narrowest point
+            #         self._new_inlet = idx[self._new_inlet]
+            #
+            #     # add new breach to list of inlets
+            #     self._inlet_idx.append(
+            #         np.array(self._new_inlet)
+            #     )  # KA: not sure if I need the np.array here
+            #
+            # # get rid of duplicates and neighbours
+            # if np.size(self._inlet_idx) != 0:
+            #     # KA: inlet_idx_mat is just inlet_idx concatenated into a single
+            #     # array and made a float so we can use NaNs
+            #     self._inlet_idx_mat = np.hstack(self._inlet_idx).astype(float)
+            #     inlet_all_idx = np.sort(self._inlet_idx_mat)
+            #     inlet_all_idx_idx = np.argsort(self._inlet_idx_mat)
+            #
+            #     # don't try to understand this line (message from Jaap)
+            #     # KA: replaced empty "cell" contents with NaNs
+            #     self._inlet_idx_mat[
+            #         inlet_all_idx_idx[
+            #             np.less_equal(
+            #                 np.diff(np.r_[inlet_all_idx[-1] - self._ny, inlet_all_idx]),
+            #                 1,
+            #             )
+            #         ]
+            #     ] = np.nan
+            #     self._inlet_idx_mat = self._inlet_idx_mat[
+            #         ~np.isnan(self._inlet_idx_mat)
+            #     ]
+            #     # KA: here, inlet_idx is reduced to just the first index (still a list)
+            #     self._inlet_idx = self._inlet_idx_mat.astype(int).tolist()
 
-                # basin width is simpler (cross-barrier basin width [m])
-                self._basin_width = np.maximum(
-                    0, self._z / self._s_background - self._x_b
-                )
+            # # do "fluid mechanics" of inlets (KA: I see no need for the second
+            # # "if" statement, but leave as is )
+            # if np.size(self._inlet_idx) != 0:
+            #     # sort inlets (first index only) and find respective tidal prisms
+            #     inlet_all_idx = np.sort(self._inlet_idx)
+            #     inlet_all_idx_idx = np.argsort(self._inlet_idx)
+            #     inlet_dist = np.diff(
+            #         np.r_[
+            #             inlet_all_idx[-1] - self._ny,
+            #             inlet_all_idx,
+            #             inlet_all_idx[0] + self._ny,
+            #         ]
+            #     )  # KA: distance between inlets
+            #     basin_length = np.minimum(
+            #         self._Jmin,
+            #         (
+            #             self._dy
+            #             * 0.5
+            #             * (inlet_dist[0:-1] + inlet_dist[1 : len(inlet_dist)])
+            #         ),
+            #     )
+            #
+            #     # see swart zimmerman
+            #     ah_star = (
+            #         self._omega0 * w[self._inlet_idx] / np.sqrt(self._g * self._a0)
+            #     )
+            #     c_d = self._g * self._man_n ** 2 / (d_b[self._inlet_idx] ** (1 / 3))
+            #     gam = np.maximum(
+            #         1e-3,
+            #         self._inlet_asp
+            #         * (
+            #             (self._omega0 ** 2)
+            #             * (1 - self._marsh_cover) ** 2
+            #             * (basin_length[inlet_all_idx_idx] ** 2)
+            #             * (self._basin_width[self._inlet_idx] ** 2)
+            #             * self._a0
+            #             / self._g
+            #         )
+            #         ** (1 / 4)
+            #         / ((8 / 3 / np.pi) * c_d * w[self._inlet_idx]),
+            #     )
+            #     a_star_eq = self.a_star_eq_fun(ah_star, gam, self._u_e_star)
+            #     u_eq = np.real(self.u(a_star_eq, gam, ah_star))
+            #     ai_eq = (
+            #         self._omega0
+            #         * (1 - self._marsh_cover)
+            #         * basin_length[inlet_all_idx_idx]
+            #         * self._basin_width[self._inlet_idx]
+            #         * np.sqrt(self._a0 / self._g)
+            #     ) * a_star_eq  # KA: does it matter that this was last defined during the Tstorm year?
+            #
+            #     # keep inlet open if velocity is at equilibrium (Escoffier); add
+            #     # margin of 0.05 m/s for rounding errors etc
+            #     inlet_close = np.logical_and(
+            #         np.logical_or(np.less(u_eq, (self._u_e - 0.05)), np.isnan(u_eq)),
+            #         np.greater(w[self._inlet_idx], 0),
+            #     )
+            #
+            #     # we don't have to think about this one every again!
+            #     self._inlet_idx_mat[
+            #         inlet_close
+            #     ] = np.nan  # KA: use inlet_idx_mat b/c float
+            #     self._inlet_idx_close_mat = np.argwhere(
+            #         np.isnan(self._inlet_idx_mat)
+            #     )  # KA: get index
+            #     self._inlet_idx_mat = self._inlet_idx_mat[
+            #         ~np.isnan(self._inlet_idx_mat)
+            #     ]
+            #     # KA: again here, inlet_idx is just the first index (still a list), and not sorted
+            #     self._inlet_idx = self._inlet_idx_mat.astype(int).tolist()
+            #     ai_eq[inlet_close] = np.nan
+            #     ai_eq = ai_eq[~np.isnan(ai_eq)]
+            #
+            #     wi_eq = np.sqrt(ai_eq) / self._inlet_asp  # calculate width and depths
+            #     di_eq = ai_eq / wi_eq
+            #     wi_cell = np.ceil(wi_eq / self._dy).astype(
+            #         int
+            #     )  # get cell widths per inlet
 
-                # find new inlets only if its far enough away from existing inlets
-                # KA: i.e., find the instances of Jmin
-                idx = np.nonzero(basin_length > (self._Jmin - 1))[0]
+            # # KA: python object arrays to "mimic" Matlab cells for inlet tracking
+            # # in retrospect, probably didn't need objects. Empty list would have been fine.
+            # inlet_nex = np.empty(np.size(self._inlet_idx), dtype=object)
+            # inlet_prv = np.empty(np.size(self._inlet_idx), dtype=object)
+            #
+            # # preallocate arrays for inlet migration and fractions based on I
+            # migr_up, delta, beta, beta_r, alpha, alpha_r, delta_r, Qs_in = [
+            #     np.zeros(np.size(self._inlet_idx)).astype(float) for _ in range(8)
+            # ]
+            #
+            # # inlet morphodynamics per inlet (KA: again, j-1 here for python)
+            # for j in np.arange(1, np.size(self._inlet_idx) + 1):
+            #
+            #     # breach sediment is added to the flood-tidal delta
+            #     if (
+            #         self._new_inlet.size > 0
+            #         and self._inlet_idx[j - 1] == self._new_inlet
+            #     ):  # KA: for python, need to check that the array isn't empty
+            #         # KA: here, Jaap allows the indexing to wrap such that a new
+            #         # inlet formed at the end of the model domain can deposit sediment
+            #         # at the start of the model domain; does this wrapping for all
+            #         # inlet dynamics (see other np.mods throughout code)
+            #         new_inlet_idx = np.mod(
+            #             self._new_inlet + np.r_[1 : (wi_cell[j - 1] + 1)] - 1, self._ny
+            #         )
+            #         self._x_b_fld_dt[new_inlet_idx] = self._x_b_fld_dt[
+            #             new_inlet_idx
+            #         ] + (
+            #             (self._h_b[self._new_inlet] + di_eq[j - 1]) * w[self._new_inlet]
+            #         ) / (
+            #             d_b[self._new_inlet]
+            #         )
+            #
+            #         self._Qinlet[self._time_index - 1] = self._Qinlet[
+            #             self._time_index - 1
+            #         ] + (
+            #             (self._h_b[self._new_inlet] + d_b[self._new_inlet])
+            #             * w[self._new_inlet]
+            #             * wi_cell[j - 1]
+            #             * self._dy
+            #         )
+            #
+            #     # alongshore flux brought into inlet
+            #     Qs_in[j - 1] = Qs[self._inlet_idx[j - 1]]
+            #
+            #     # find cells of inlet, updrift barrier, and downdrift barrier
+            #     # KA: here, inlet_idx becomes a list of arrays, and again,
+            #     # inlets wrap around the edges
+            #     self._inlet_idx[j - 1] = np.mod(
+            #         self._inlet_idx[j - 1] + np.r_[1 : (wi_cell[j - 1] + 1)] - 1,
+            #         self._ny,
+            #     ).astype(int)
+            #     inlet_nex[j - 1] = np.mod(self._inlet_idx[j - 1][-1] + 1, self._ny)
+            #     inlet_prv[j - 1] = np.mod(self._inlet_idx[j - 1][0] - 1, self._ny)
+            #
+            #     # find momentum balance of inlet to determine sediment
+            #     # distribution fractions
+            #     Mt = self._rho_w * self._u_e * self._u_e * ai_eq[j - 1]
+            #     Mw = self._rho_w / 16 * self._g * self._wave_height ** 2 * wi_eq[j - 1]
+            #     I = Mt / Mw * wi_eq[j - 1] / w[self._inlet_idx[j - 1][0]]
+            #     self._h_b[self._inlet_idx[j - 1]] = 0
+            #
+            #     # constrain to not widen
+            #     Ab_prv = w[inlet_prv[j - 1]] * (
+            #         self._h_b[self._inlet_idx[j - 1][0]] + di_eq[j - 1]
+            #     )
+            #     Ab_nex = w[inlet_nex[j - 1]] * (
+            #         self._h_b[inlet_nex[j - 1]] + di_eq[j - 1]
+            #     )
+            #
+            #     # do fld delta eq volume
+            #     Vfld = (
+            #         (
+            #             self._x_b[self._inlet_idx[j - 1][0]]
+            #             - self._x_s[self._inlet_idx[j - 1][0]]
+            #             + self._w_b_crit
+            #         )
+            #         * wi_eq[j - 1]
+            #         * d_b[self._inlet_idx[j - 1][0]]
+            #     )
+            #     Vfld_max = 1e4 * (self._u_e * ai_eq[j - 1] / 2 / self._omega0) ** 0.37
+            #
+            #     # add fix to limit unrealistic flood-tidal delta size (based on
+            #     # johnson flood-tidal delta of florida 2006)
+            #     if Vfld > Vfld_max:
+            #         I = 0.1
+            #
+            #     # calculate fractions based on I (KA: added self here b/c otherwise it produced an error)
+            #     # version 1: original BRIE upload (shoreline not stable)
+            #     # delta[j - 1] = inlet_fraction(self, 0, 1, 3, -3, I)
+            #     # beta[j - 1] = inlet_fraction(self, 0, 1, 10, 3, I)
+            #     # beta_r[j - 1] = inlet_fraction(self, 0, 1, 0.9, -3, I)
+            #
+            #     # version 2: from Neinhuis and Ashton 2016 (updated May 27, 2020)
+            #     # NOTE, Jaap only changes beta_r in the Matlab version, so we will do the same here
+            #     # delta[j - 1] = inlet_fraction(self, 0.05, 0.95, 3, -3, I)
+            #     # beta[j - 1] = inlet_fraction(self, 0, 0.9, 10, 3, I)
+            #     # beta_r[j - 1] = inlet_fraction(self, 0, 0.9, 0.9, -3, I)
+            #
+            #     delta[j - 1] = inlet_fraction(0, 1, 3, -3, I)
+            #     beta[j - 1] = inlet_fraction(0, 1, 10, 3, I)
+            #     beta_r[j - 1] = inlet_fraction(0, 0.9, 0.9, -3, I)
+            #
+            #     #            #{
+            #     #            humans affect inlets?
+            #     #            delta(j) = 0;
+            #     #            beta(j) = 1;
+            #     #            beta_r(j) = 0;
+            #     #              #}
+            #
+            #     alpha[j - 1] = 1 - beta[j - 1] - delta[j - 1]
+            #     alpha_r[j - 1] = alpha[j - 1] * 0.6
+            #
+            #     if Vfld > Vfld_max:
+            #         delta_r[j - 1] = 0
+            #     else:
+            #         delta_r[j - 1] = (
+            #             (Ab_nex * alpha[j - 1]) - (Ab_prv * beta_r[j - 1])
+            #         ) / Ab_prv
+            #
+            #     # use fractions to physically move inlets and fld-tidal detlas
+            #
+            #     # update fld delta, deposit sediment at 0 water depth
+            #     fld_delta = np.abs(Qs_in[j - 1]) * (
+            #         delta[j - 1] + delta_r[j - 1]
+            #     )  # KA: this seems low for my QC scenario, maybe come back to this
+            #     # remove sediment from the shoreface
+            #     inlet_sink = np.abs(Qs_in[j - 1]) * (1 - beta[j - 1] - beta_r[j - 1])
+            #     # spread fld tidal delta along one more cell alongshore in both directions
+            #     temp_idx = np.r_[
+            #         inlet_prv[j - 1], self._inlet_idx[j - 1], inlet_nex[j - 1]
+            #     ]
+            #
+            #     self._x_b_fld_dt[temp_idx] = self._x_b_fld_dt[temp_idx] + fld_delta / (
+            #         np.size(temp_idx) * self._dy
+            #     ) / (self._h_b[temp_idx] + d_b[temp_idx])
+            #
+            #     # migrate inlet indices (in m/dt)
+            #     migr_up[j - 1] = Qs_in[j - 1] * (alpha_r[j - 1] + alpha[j - 1]) / Ab_prv
+            #     #                migr_dw = (
+            #     #                    Qs_in[j - 1]
+            #     #                    * (alpha_r[j - 1] + beta_r[j - 1] + delta_r[j - 1])
+            #     #                    / Ab_nex
+            #     #                )
+            #
+            #     # calculate where in the grid cell the inlet is, and add the
+            #     # fractional migration to it
+            #     self._inlet_y[self._inlet_idx[j - 1][0]] = (
+            #         self._inlet_y[self._inlet_idx[j - 1][0]] + migr_up[j - 1] / self._dy
+            #     )
+            #
+            #     # how far are the inlets in their gridcell?
+            #     # (or is inlet_y>1 or <0 and should the inlet hop one grid cell?)
+            #     migr_int = np.floor(
+            #         self._inlet_y[self._inlet_idx[j - 1][0]]
+            #     )  # KA: unsure about these too
+            #     migr_res = np.mod(self._inlet_y[self._inlet_idx[j - 1][0]], 1)
+            #
+            #     # reset old grid cell
+            #     self._inlet_y[self._inlet_idx[j - 1][0]] = 0
+            #
+            #     # move inlet in gridcell
+            #     self._inlet_idx[j - 1] = np.mod(
+            #         self._inlet_idx[j - 1] + migr_int, self._ny
+            #     ).astype(int)
+            #
+            #     self._inlet_y[self._inlet_idx[j - 1][0]] = migr_res
+            #
+            #     # how much q flood tidal delta in total
+            #     self._Qinlet[self._time_index - 1] = (
+            #         self._Qinlet[self._time_index - 1] + inlet_sink
+            #     )  # m3 per time step
+            #
+            #     # add inlet sink to shoreline change (updated May 27, 2020 so that shoreline change from inlet sink
+            #     # now spread out along width of inlet +1 cell in both directions)
+            #     # self._x_s_dt[inlet_nex[j - 1]] = (
+            #     #         self._x_s_dt[inlet_nex[j - 1]]
+            #     #         + inlet_sink / (self._h_b[inlet_nex[j - 1]] + self._d_sf) / self._dy
+            #     # )
+            #     self._x_s_dt[temp_idx] = (
+            #         self._x_s_dt[temp_idx]
+            #         + inlet_sink
+            #         / (self._h_b[temp_idx] + self._d_sf)
+            #         / len(temp_idx)
+            #         / self._dy
+            #     )
+            #
+            #     # inlet age
+            #     # fancy lightweight way to keep track of where inlets are in the model
+            #     # KA: note that this differs from matlab version, here we do this all
+            #     # in the for loop (but still [time step, inlet starting ID])
+            #     self._inlet_age.append(  # KA: shouldn't this be time_index-1?
+            #         [self._time_index, self._inlet_idx[j - 1][0].astype("int32")]
+            #     )
 
-                # KA: for Python, we need to check if there is an instance of Jmin,
-                # else an error will be thrown with argmin. If the number of inlets
-                # has been saturated, then we keep new_inlet empty from previous loop
-                if np.size(idx) != 0:
-                    self._new_inlet = np.argmin(
-                        self._barrier_volume[idx]
-                    )  # KA: find the instance of Jmin at the narrowest point
-                    self._new_inlet = idx[self._new_inlet]
+            # # reset arrays
+            # self._new_inlet = np.array([])
 
-                # add new breach to list of inlets
-                self._inlet_idx.append(
-                    np.array(self._new_inlet)
-                )  # KA: not sure if I need the np.array here
-
-            # get rid of duplicates and neighbours
-            if np.size(self._inlet_idx) != 0:
-                # KA: inlet_idx_mat is just inlet_idx concatenated into a single
-                # array and made a float so we can use NaNs
-                self._inlet_idx_mat = np.hstack(self._inlet_idx).astype(float)
-                inlet_all_idx = np.sort(self._inlet_idx_mat)
-                inlet_all_idx_idx = np.argsort(self._inlet_idx_mat)
-
-                # don't try to understand this line (message from Jaap)
-                # KA: replaced empty "cell" contents with NaNs
-                self._inlet_idx_mat[
-                    inlet_all_idx_idx[
-                        np.less_equal(
-                            np.diff(np.r_[inlet_all_idx[-1] - self._ny, inlet_all_idx]),
-                            1,
-                        )
-                    ]
-                ] = np.nan
-                self._inlet_idx_mat = self._inlet_idx_mat[
-                    ~np.isnan(self._inlet_idx_mat)
-                ]
-                # KA: here, inlet_idx is reduced to just the first index (still a list)
-                self._inlet_idx = self._inlet_idx_mat.astype(int).tolist()
-
-            # do "fluid mechanics" of inlets (KA: I see no need for the second
-            # "if" statement, but leave as is )
-            if np.size(self._inlet_idx) != 0:
-                # sort inlets (first index only) and find respective tidal prisms
-                inlet_all_idx = np.sort(self._inlet_idx)
-                inlet_all_idx_idx = np.argsort(self._inlet_idx)
-                inlet_dist = np.diff(
-                    np.r_[
-                        inlet_all_idx[-1] - self._ny,
-                        inlet_all_idx,
-                        inlet_all_idx[0] + self._ny,
-                    ]
-                )  # KA: distance between inlets
-                basin_length = np.minimum(
-                    self._Jmin,
-                    (
-                        self._dy
-                        * 0.5
-                        * (inlet_dist[0:-1] + inlet_dist[1 : len(inlet_dist)])
-                    ),
-                )
-
-                # see swart zimmerman
-                ah_star = (
-                    self._omega0 * w[self._inlet_idx] / np.sqrt(self._g * self._a0)
-                )
-                c_d = self._g * self._man_n ** 2 / (d_b[self._inlet_idx] ** (1 / 3))
-                gam = np.maximum(
-                    1e-3,
-                    self._inlet_asp
-                    * (
-                        (self._omega0 ** 2)
-                        * (1 - self._marsh_cover) ** 2
-                        * (basin_length[inlet_all_idx_idx] ** 2)
-                        * (self._basin_width[self._inlet_idx] ** 2)
-                        * self._a0
-                        / self._g
-                    )
-                    ** (1 / 4)
-                    / ((8 / 3 / np.pi) * c_d * w[self._inlet_idx]),
-                )
-                a_star_eq = self.a_star_eq_fun(ah_star, gam, self._u_e_star)
-                u_eq = np.real(self.u(a_star_eq, gam, ah_star))
-                ai_eq = (
-                    self._omega0
-                    * (1 - self._marsh_cover)
-                    * basin_length[inlet_all_idx_idx]
-                    * self._basin_width[self._inlet_idx]
-                    * np.sqrt(self._a0 / self._g)
-                ) * a_star_eq  # KA: does it matter that this was last defined during the Tstorm year?
-
-                # keep inlet open if velocity is at equilibrium (Escoffier); add
-                # margin of 0.05 m/s for rounding errors etc
-                inlet_close = np.logical_and(
-                    np.logical_or(np.less(u_eq, (self._u_e - 0.05)), np.isnan(u_eq)),
-                    np.greater(w[self._inlet_idx], 0),
-                )
-
-                # we don't have to think about this one every again!
-                self._inlet_idx_mat[
-                    inlet_close
-                ] = np.nan  # KA: use inlet_idx_mat b/c float
-                self._inlet_idx_close_mat = np.argwhere(
-                    np.isnan(self._inlet_idx_mat)
-                )  # KA: get index
-                self._inlet_idx_mat = self._inlet_idx_mat[
-                    ~np.isnan(self._inlet_idx_mat)
-                ]
-                # KA: again here, inlet_idx is just the first index (still a list), and not sorted
-                self._inlet_idx = self._inlet_idx_mat.astype(int).tolist()
-                ai_eq[inlet_close] = np.nan
-                ai_eq = ai_eq[~np.isnan(ai_eq)]
-
-                wi_eq = np.sqrt(ai_eq) / self._inlet_asp  # calculate width and depths
-                di_eq = ai_eq / wi_eq
-                wi_cell = np.ceil(wi_eq / self._dy).astype(
-                    int
-                )  # get cell widths per inlet
-
-            # KA: python object arrays to "mimic" Matlab cells for inlet tracking
-            # in retrospect, probably didn't need objects. Empty list would have been fine.
-            inlet_nex = np.empty(np.size(self._inlet_idx), dtype=object)
-            inlet_prv = np.empty(np.size(self._inlet_idx), dtype=object)
-
-            # preallocate arrays for inlet migration and fractions based on I
-            migr_up, delta, beta, beta_r, alpha, alpha_r, delta_r, Qs_in = [
-                np.zeros(np.size(self._inlet_idx)).astype(float) for _ in range(8)
-            ]
-
-            # inlet morphodynamics per inlet (KA: again, j-1 here for python)
-            for j in np.arange(1, np.size(self._inlet_idx) + 1):
-
-                # breach sediment is added to the flood-tidal delta
-                if (
-                    self._new_inlet.size > 0
-                    and self._inlet_idx[j - 1] == self._new_inlet
-                ):  # KA: for python, need to check that the array isn't empty
-                    # KA: here, Jaap allows the indexing to wrap such that a new
-                    # inlet formed at the end of the model domain can deposit sediment
-                    # at the start of the model domain; does this wrapping for all
-                    # inlet dynamics (see other np.mods throughout code)
-                    new_inlet_idx = np.mod(
-                        self._new_inlet + np.r_[1 : (wi_cell[j - 1] + 1)] - 1, self._ny
-                    )
-                    self._x_b_fld_dt[new_inlet_idx] = self._x_b_fld_dt[
-                        new_inlet_idx
-                    ] + (
-                        (self._h_b[self._new_inlet] + di_eq[j - 1]) * w[self._new_inlet]
-                    ) / (
-                        d_b[self._new_inlet]
-                    )
-
-                    self._Qinlet[self._time_index - 1] = self._Qinlet[
-                        self._time_index - 1
-                    ] + (
-                        (self._h_b[self._new_inlet] + d_b[self._new_inlet])
-                        * w[self._new_inlet]
-                        * wi_cell[j - 1]
-                        * self._dy
-                    )
-
-                # alongshore flux brought into inlet
-                Qs_in[j - 1] = Qs[self._inlet_idx[j - 1]]
-
-                # find cells of inlet, updrift barrier, and downdrift barrier
-                # KA: here, inlet_idx becomes a list of arrays, and again,
-                # inlets wrap around the edges
-                self._inlet_idx[j - 1] = np.mod(
-                    self._inlet_idx[j - 1] + np.r_[1 : (wi_cell[j - 1] + 1)] - 1,
-                    self._ny,
-                ).astype(int)
-                inlet_nex[j - 1] = np.mod(self._inlet_idx[j - 1][-1] + 1, self._ny)
-                inlet_prv[j - 1] = np.mod(self._inlet_idx[j - 1][0] - 1, self._ny)
-
-                # find momentum balance of inlet to determine sediment
-                # distribution fractions
-                Mt = self._rho_w * self._u_e * self._u_e * ai_eq[j - 1]
-                Mw = self._rho_w / 16 * self._g * self._wave_height ** 2 * wi_eq[j - 1]
-                I = Mt / Mw * wi_eq[j - 1] / w[self._inlet_idx[j - 1][0]]
-                self._h_b[self._inlet_idx[j - 1]] = 0
-
-                # constrain to not widen
-                Ab_prv = w[inlet_prv[j - 1]] * (
-                    self._h_b[self._inlet_idx[j - 1][0]] + di_eq[j - 1]
-                )
-                Ab_nex = w[inlet_nex[j - 1]] * (
-                    self._h_b[inlet_nex[j - 1]] + di_eq[j - 1]
-                )
-
-                # do fld delta eq volume
-                Vfld = (
-                    (
-                        self._x_b[self._inlet_idx[j - 1][0]]
-                        - self._x_s[self._inlet_idx[j - 1][0]]
-                        + self._w_b_crit
-                    )
-                    * wi_eq[j - 1]
-                    * d_b[self._inlet_idx[j - 1][0]]
-                )
-                Vfld_max = 1e4 * (self._u_e * ai_eq[j - 1] / 2 / self._omega0) ** 0.37
-
-                # add fix to limit unrealistic flood-tidal delta size (based on
-                # johnson flood-tidal delta of florida 2006)
-                if Vfld > Vfld_max:
-                    I = 0.1
-
-                # calculate fractions based on I (KA: added self here b/c otherwise it produced an error)
-                # version 1: original BRIE upload (shoreline not stable)
-                # delta[j - 1] = inlet_fraction(self, 0, 1, 3, -3, I)
-                # beta[j - 1] = inlet_fraction(self, 0, 1, 10, 3, I)
-                # beta_r[j - 1] = inlet_fraction(self, 0, 1, 0.9, -3, I)
-
-                # version 2: from Neinhuis and Ashton 2016 (updated May 27, 2020)
-                # NOTE, Jaap only changes beta_r in the Matlab version, so we will do the same here
-                # delta[j - 1] = inlet_fraction(self, 0.05, 0.95, 3, -3, I)
-                # beta[j - 1] = inlet_fraction(self, 0, 0.9, 10, 3, I)
-                # beta_r[j - 1] = inlet_fraction(self, 0, 0.9, 0.9, -3, I)
-
-                delta[j - 1] = inlet_fraction(0, 1, 3, -3, I)
-                beta[j - 1] = inlet_fraction(0, 1, 10, 3, I)
-                beta_r[j - 1] = inlet_fraction(0, 0.9, 0.9, -3, I)
-
-                #            #{
-                #            humans affect inlets?
-                #            delta(j) = 0;
-                #            beta(j) = 1;
-                #            beta_r(j) = 0;
-                #              #}
-
-                alpha[j - 1] = 1 - beta[j - 1] - delta[j - 1]
-                alpha_r[j - 1] = alpha[j - 1] * 0.6
-
-                if Vfld > Vfld_max:
-                    delta_r[j - 1] = 0
-                else:
-                    delta_r[j - 1] = (
-                        (Ab_nex * alpha[j - 1]) - (Ab_prv * beta_r[j - 1])
-                    ) / Ab_prv
-
-                # use fractions to physically move inlets and fld-tidal detlas
-
-                # update fld delta, deposit sediment at 0 water depth
-                fld_delta = np.abs(Qs_in[j - 1]) * (
-                    delta[j - 1] + delta_r[j - 1]
-                )  # KA: this seems low for my QC scenario, maybe come back to this
-                # remove sediment from the shoreface
-                inlet_sink = np.abs(Qs_in[j - 1]) * (1 - beta[j - 1] - beta_r[j - 1])
-                # spread fld tidal delta along one more cell alongshore in both directions
-                temp_idx = np.r_[
-                    inlet_prv[j - 1], self._inlet_idx[j - 1], inlet_nex[j - 1]
-                ]
-
-                self._x_b_fld_dt[temp_idx] = self._x_b_fld_dt[temp_idx] + fld_delta / (
-                    np.size(temp_idx) * self._dy
-                ) / (self._h_b[temp_idx] + d_b[temp_idx])
-
-                # migrate inlet indices (in m/dt)
-                migr_up[j - 1] = Qs_in[j - 1] * (alpha_r[j - 1] + alpha[j - 1]) / Ab_prv
-                #                migr_dw = (
-                #                    Qs_in[j - 1]
-                #                    * (alpha_r[j - 1] + beta_r[j - 1] + delta_r[j - 1])
-                #                    / Ab_nex
-                #                )
-
-                # calculate where in the grid cell the inlet is, and add the
-                # fractional migration to it
-                self._inlet_y[self._inlet_idx[j - 1][0]] = (
-                    self._inlet_y[self._inlet_idx[j - 1][0]] + migr_up[j - 1] / self._dy
-                )
-
-                # how far are the inlets in their gridcell?
-                # (or is inlet_y>1 or <0 and should the inlet hop one grid cell?)
-                migr_int = np.floor(
-                    self._inlet_y[self._inlet_idx[j - 1][0]]
-                )  # KA: unsure about these too
-                migr_res = np.mod(self._inlet_y[self._inlet_idx[j - 1][0]], 1)
-
-                # reset old grid cell
-                self._inlet_y[self._inlet_idx[j - 1][0]] = 0
-
-                # move inlet in gridcell
-                self._inlet_idx[j - 1] = np.mod(
-                    self._inlet_idx[j - 1] + migr_int, self._ny
-                ).astype(int)
-
-                self._inlet_y[self._inlet_idx[j - 1][0]] = migr_res
-
-                # how much q flood tidal delta in total
-                self._Qinlet[self._time_index - 1] = (
-                    self._Qinlet[self._time_index - 1] + inlet_sink
-                )  # m3 per time step
-
-                # add inlet sink to shoreline change (updated May 27, 2020 so that shoreline change from inlet sink
-                # now spread out along width of inlet +1 cell in both directions)
-                # self._x_s_dt[inlet_nex[j - 1]] = (
-                #         self._x_s_dt[inlet_nex[j - 1]]
-                #         + inlet_sink / (self._h_b[inlet_nex[j - 1]] + self._d_sf) / self._dy
-                # )
-                self._x_s_dt[temp_idx] = (
-                    self._x_s_dt[temp_idx]
-                    + inlet_sink
-                    / (self._h_b[temp_idx] + self._d_sf)
-                    / len(temp_idx)
-                    / self._dy
-                )
-
-                # inlet age
-                # fancy lightweight way to keep track of where inlets are in the model
-                # KA: note that this differs from matlab version, here we do this all
-                # in the for loop (but still [time step, inlet starting ID])
-                self._inlet_age.append(  # KA: shouldn't this be time_index-1?
-                    [self._time_index, self._inlet_idx[j - 1][0].astype("int32")]
-                )
-
-            # reset arrays
-            self._new_inlet = np.array([])
-
-            # inlet statistics
-            if (
-                np.mod(self._time_index, self._dtsave) == 0
-            ):  # KA: modified this from matlab version so that I can save every time step in python
-                # skip first time step (initial condition)
-                self._inlet_nr[
-                    np.fix(self._time_index / self._dtsave).astype(int) - 1
-                ] = len(
-                    self._inlet_idx
-                )  # number of inlets
-                self._inlet_migr[
-                    np.fix(self._time_index / self._dtsave).astype(int) - 1
-                ] = np.mean(migr_up / self._dt)
-
-                if np.size(self._inlet_idx) != 0:
-                    self._inlet_Qs_in[
-                        np.fix(self._time_index / self._dtsave).astype(int) - 1
-                    ] = np.mean(Qs_in)
-                    self._inlet_alpha[
-                        np.fix(self._time_index / self._dtsave).astype(int) - 1
-                    ] = np.mean(alpha)
-                    self._inlet_beta[
-                        np.fix(self._time_index / self._dtsave).astype(int) - 1
-                    ] = np.mean(beta)
-                    self._inlet_delta[
-                        np.fix(self._time_index / self._dtsave).astype(int) - 1
-                    ] = np.mean(delta)
-                    self._inlet_ai[
-                        np.fix(self._time_index / self._dtsave).astype(int) - 1
-                    ] = np.mean(ai_eq)
+            # # inlet statistics
+            # if (
+            #     np.mod(self._time_index, self._dtsave) == 0
+            # ):  # KA: modified this from matlab version so that I can save every time step in python
+            #     # skip first time step (initial condition)
+            #     self._inlet_nr[
+            #         np.fix(self._time_index / self._dtsave).astype(int) - 1
+            #     ] = len(
+            #         self._inlet_idx
+            #     )  # number of inlets
+            #     self._inlet_migr[
+            #         np.fix(self._time_index / self._dtsave).astype(int) - 1
+            #     ] = np.mean(migr_up / self._dt)
+            #
+            #     if np.size(self._inlet_idx) != 0:
+            #         self._inlet_Qs_in[
+            #             np.fix(self._time_index / self._dtsave).astype(int) - 1
+            #         ] = np.mean(Qs_in)
+            #         self._inlet_alpha[
+            #             np.fix(self._time_index / self._dtsave).astype(int) - 1
+            #         ] = np.mean(alpha)
+            #         self._inlet_beta[
+            #             np.fix(self._time_index / self._dtsave).astype(int) - 1
+            #         ] = np.mean(beta)
+            #         self._inlet_delta[
+            #             np.fix(self._time_index / self._dtsave).astype(int) - 1
+            #         ] = np.mean(delta)
+            #         self._inlet_ai[
+            #             np.fix(self._time_index / self._dtsave).astype(int) - 1
+            #         ] = np.mean(ai_eq)
 
         else:  # inlet model not on
             # Qs_in = 0
