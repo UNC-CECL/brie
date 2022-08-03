@@ -4,8 +4,9 @@ from numpy.lib.scimath import power as cpower, sqrt as csqrt
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import spsolve
 
-from .alongshore_transporter import calc_alongshore_transport_k
-from .waves import WaveAngleGenerator
+from .alongshore_transporter import AlongshoreTransporter
+from .waves import WaveAngleGenerator, ashton
+from .lexi_inlet_spinner import InletSpinner
 
 
 def inlet_fraction(a, b, c, d, I):
@@ -165,11 +166,14 @@ class Brie:
         self._wave_high = wave_angle_high_fraction
         self._wave_angle = wave_angle  # the default initial wave angle
 
-        # alongshore distribution of wave energy
-        self._wave_climl = int(180.0 / wave_angle_resolution)
+        # # alongshore distribution of wave energy
+        # self._wave_climl = int(180.0 / wave_angle_resolution)
+        #
+        # # k for alongshore transport
+        # self._k = calc_alongshore_transport_k(gravity=self._g)
 
-        # k for alongshore transport
-        self._k = calc_alongshore_transport_k(gravity=self._g)
+        # asthon wave distribution
+        self._wave_dist = ashton(a=self._wave_asym, h=self._wave_high, loc=-np.pi / 2, scale=np.pi)
 
         ###############################################################################
         # barrier model parameters
@@ -209,11 +213,12 @@ class Brie:
         self._Jmin = inlet_min_spacing
         self._a0 = tide_amplitude
         self._omega0 = tide_frequency
-        self._inlet_asp = np.sqrt(0.005)  # aspect ratio inlet
+        # self._inlet_asp = np.sqrt(0.005)  # aspect ratio inlet
         self._man_n = lagoon_manning_n
-        self._u_e = 1  # inlet equilibrium velocity [m/s]
-        self._inlet_max = 100  # maximum number of inlets (mostly for debugging)
+        # self._u_e = 1  # inlet equilibrium velocity [m/s]
+        # self._inlet_max = 100  # maximum number of inlets (mostly for debugging)
         self._marsh_cover = back_barrier_marsh_fraction
+        self._RNG = np.random.default_rng(seed=1973)  # random number generator
 
         # # set the dependent variables
         # if self._bseed:
@@ -238,126 +243,149 @@ class Brie:
         #         If provided, the current position of the shoreline [m].
         #     """
 
-        self._RNG = np.random.default_rng(seed=1973)  # random number generator
 
         ###############################################################################
         # shoreface and barrier model dependent variables
         ###############################################################################
 
-        self._Vd_max = self._w_b_crit * self._h_b_crit  # max deficit volume [m3/m]
-
-        w_s = (
-            self._R
-            * self._g
-            * self._grain_size ** 2
-            / (
-                (18 * 1e-6)
-                + np.sqrt(0.75 * self._R * self._g * (self._grain_size ** 3))
-            )
-        )  # settling velocity [m/s] Church & Ferguson (2004)
-
-        phi = (
-            16 * self._e_s * self._c_s / (15 * np.pi * self._R * self._g)
-        )  # phi from Ortiz and Ashton (2016)
-
-        self._z0 = (
-            2 * self._wave_height / 0.78
-        )  # minimum depth of integration [m] (simple approx of breaking wave depth based on offshore wave height)
-
-        self._d_sf = (
-            8.9 * self._wave_height
-        )  # depth shoreface [m], Hallermeier (1983) or  Houston (1995)
-        # alternatively 0.018*wave_height*wave_period*sqrt(g./(R*grain_size))
-
-        self._k_sf = (
-            (3600 * 24 * 365)
-            / (self._d_sf - self._z0)
-            * (
-                self._g ** (15 / 4)
-                * self._wave_height ** 5
-                * phi
-                * self._wave_period ** (5 / 2)
-                / (1024 * np.pi ** (5 / 2) * w_s ** 2)
-                * (4 / 11 * (1 / self._z0 ** (11 / 4) - 1 / (self._d_sf ** (11 / 4))))
-            )
-        )  # shoreface response rate [m^3/m/yr], Lorenzo-Trueba & Ashton (2014) or Ortiz and Ashton (2016)
-
-        self._s_sf_eq = (
-            3
-            * w_s
-            / 4
-            / np.sqrt(self._d_sf * self._g)
-            * (5 + 3 * self._wave_period ** 2 * self._g / 4 / (np.pi ** 2) / self._d_sf)
-        )  # equilibrium shoreface slope
-
-        self._x_t = (self._z - self._d_sf) / self._s_background + np.zeros(
-            self._ny
-        )  # position shoreface toe [m]
-
-        # KA - used for testing/debugging brie.py vs. brie.m
-        if self._bseed:
-            if xs is None or wave_angle is None:
-                raise ValueError("if bseed is True, xs and wave_angle must be provided")
-            self._x_s = xs
-            # self._wave_angle = wave_angle  # this is redundant
-        else:
-            self._x_s = (
-                self._RNG.random(self._ny) + self._d_sf / self._s_sf_eq + self._x_t
-            )  # position shoreline [m]
-            # self._x_s = np.random.rand(self._ny) + self._d_sf / self._s_sf_eq + self._x_t  # position shoreline [m]
-
-        self._x_b = (
-            self._d_sf / self._s_sf_eq + self._w_b_crit + self._x_t
-        )  # position back barrier [m]
-
-        self._h_b = 2 + np.zeros(self._ny)  # height barrier [m]
-        self._barrier_volume = np.array([])
+        # self._Vd_max = self._w_b_crit * self._h_b_crit  # max deficit volume [m3/m]
+        #
+        # w_s = (
+        #     self._R
+        #     * self._g
+        #     * self._grain_size ** 2
+        #     / (
+        #         (18 * 1e-6)
+        #         + np.sqrt(0.75 * self._R * self._g * (self._grain_size ** 3))
+        #     )
+        # )  # settling velocity [m/s] Church & Ferguson (2004)
+        #
+        # phi = (
+        #     16 * self._e_s * self._c_s / (15 * np.pi * self._R * self._g)
+        # )  # phi from Ortiz and Ashton (2016)
+        #
+        # self._z0 = (
+        #     2 * self._wave_height / 0.78
+        # )  # minimum depth of integration [m] (simple approx of breaking wave depth based on offshore wave height)
+        #
+        # self._d_sf = (
+        #     8.9 * self._wave_height
+        # )  # depth shoreface [m], Hallermeier (1983) or  Houston (1995)
+        # # alternatively 0.018*wave_height*wave_period*sqrt(g./(R*grain_size))
+        #
+        # self._k_sf = (
+        #     (3600 * 24 * 365)
+        #     / (self._d_sf - self._z0)
+        #     * (
+        #         self._g ** (15 / 4)
+        #         * self._wave_height ** 5
+        #         * phi
+        #         * self._wave_period ** (5 / 2)
+        #         / (1024 * np.pi ** (5 / 2) * w_s ** 2)
+        #         * (4 / 11 * (1 / self._z0 ** (11 / 4) - 1 / (self._d_sf ** (11 / 4))))
+        #     )
+        # )  # shoreface response rate [m^3/m/yr], Lorenzo-Trueba & Ashton (2014) or Ortiz and Ashton (2016)
+        #
+        # self._s_sf_eq = (
+        #     3
+        #     * w_s
+        #     / 4
+        #     / np.sqrt(self._d_sf * self._g)
+        #     * (5 + 3 * self._wave_period ** 2 * self._g / 4 / (np.pi ** 2) / self._d_sf)
+        # )  # equilibrium shoreface slope
+        #
+        # self._x_t = (self._z - self._d_sf) / self._s_background + np.zeros(
+        #     self._ny
+        # )  # position shoreface toe [m]
+        #
+        # # KA - used for testing/debugging brie.py vs. brie.m
+        # if self._bseed:
+        #     if xs is None or wave_angle is None:
+        #         raise ValueError("if bseed is True, xs and wave_angle must be provided")
+        #     self._x_s = xs
+        #     # self._wave_angle = wave_angle  # this is redundant
+        # else:
+        #     self._x_s = (
+        #         self._RNG.random(self._ny) + self._d_sf / self._s_sf_eq + self._x_t
+        #     )  # position shoreline [m]
+        #     # self._x_s = np.random.rand(self._ny) + self._d_sf / self._s_sf_eq + self._x_t  # position shoreline [m]
+        #
+        # self._x_b = (
+        #     self._d_sf / self._s_sf_eq + self._w_b_crit + self._x_t
+        # )  # position back barrier [m]
+        #
+        # self._h_b = 2 + np.zeros(self._ny)  # height barrier [m]
+        # self._barrier_volume = np.array([])
 
         ###############################################################################
         # inlet model dependent variables
         ###############################################################################
 
-        self._inlet_idx_close_mat = np.array([])
-        self._inlet_idx = (
-            []
-        )  # KA: originally a matlab cell, here a list that is appended after first time step
-        self._inlet_idx_mat = np.array([]).astype(
-            float
-        )  # KA: we use this variable for NaN operations
-        self._inlet_y = np.zeros(self._ny)
-        self._y = np.arange(
-            100, self._dy * self._ny, self._dy
-        )  # alongshore array [KA: just used for plotting]
+        self._basin_width = np.maximum(0, self._z / self._s_background - self._x_b)
 
-        self._angle_array, step = np.linspace(
-            -90.0, 90.0, self._wave_climl, retstep=True
-        )  # array of resolution angles for wave climate [radians]
-        self._angle_array = np.deg2rad(
-            self._angle_array
-        )  # KA: Jaap's version is <1 degree per bin, so also use here
+        # initialize inlet module
+        self._inlets = InletSpinner(
+            self._x_s,
+            self._x_b,
+            number_time_steps=self._nt,
+            save_spacing=self._dtsave,
+            basin_width=self._basin_width,
+            inlet_storm_frequency=10,
+            barrier_height=self._h_b,
+            alongshore_section_length=self._dy,
+            time_step=self._dt,
+            change_in_shoreline_x=0.0,
+            wave_height=self._wave_height,
+            wave_period=self._wave_period,
+            wave_angle=self._wave_angle,
+            wave_distribution=self._wave_dist,
+            inlet_min_spacing=self._Jmin,
+            tide_amplitude=self._a0,
+            tide_frequency=self._omega0,
+            lagoon_manning_n=self._man_n,
+            back_barrier_marsh_fraction=self._marsh_cover,
+        )
+        # self._inlet_idx_close_mat = np.array([])
+        # self._inlet_idx = (
+        #     []
+        # )  # KA: originally a matlab cell, here a list that is appended after first time step
+        # self._inlet_idx_mat = np.array([]).astype(
+        #     float
+        # )  # KA: we use this variable for NaN operations
+        # self._inlet_y = np.zeros(self._ny)
+        # self._y = np.arange(
+        #     100, self._dy * self._ny, self._dy
+        # )  # alongshore array [KA: just used for plotting]
+        #
+        # self._angle_array, step = np.linspace(
+        #     -90.0, 90.0, self._wave_climl, retstep=True
+        # )  # array of resolution angles for wave climate [radians]
+        # self._angle_array = np.deg2rad(
+        #     self._angle_array
+        # )  # KA: Jaap's version is <1 degree per bin, so also use here
+        #
+        # self._angles = WaveAngleGenerator(
+        #     asymmetry=self._wave_asym, high_fraction=self._wave_high
+        # )  # wave angle generator for each time step for calculating Qs_in
+        #
+        # wave_pdf = self._angles.pdf(self._angle_array) * np.deg2rad(
+        #     step
+        # )  # wave climate pdf, needs input in radians
 
-        self._angles = WaveAngleGenerator(
-            asymmetry=self._wave_asym, high_fraction=self._wave_high
-        )  # wave angle generator for each time step for calculating Qs_in
-
-        wave_pdf = self._angles.pdf(self._angle_array) * np.deg2rad(
-            step
-        )  # wave climate pdf, needs input in radians
-
-        self._coast_qs = (
-            self._wave_height ** 2.4
-            * (self._wave_period ** 0.2)
-            * 3600
-            * 365
-            * 24
-            * self._k
-            * (np.cos(self._angle_array) ** 1.2)
-            * np.sin(self._angle_array)
-        )  # alongshore sediment transport into inlets for all wave angles [m3/yr], from Ashton & Murray (2006)
-
-        self._u_e_star = self._u_e / np.sqrt(
-            self._g * self._a0
-        )  # equilibrium inlet velocity (non-dimensional)
+        # self._coast_qs = (
+        #     self._wave_height ** 2.4
+        #     * (self._wave_period ** 0.2)
+        #     * 3600
+        #     * 365
+        #     * 24
+        #     * self._k
+        #     * (np.cos(self._angle_array) ** 1.2)
+        #     * np.sin(self._angle_array)
+        # )  # alongshore sediment transport into inlets for all wave angles [m3/yr], from Ashton & Murray (2006)
+        #
+        # self._u_e_star = self._u_e / np.sqrt(
+        #     self._g * self._a0
+        # )  # equilibrium inlet velocity (non-dimensional)
 
         ###############################################################################
         # shoreline change dependent variables
@@ -367,46 +395,61 @@ class Brie:
         # dependence of diffusivity using a nonlinear term from AM06 (Eq. 37-39 in the BRIE), and convolve it with the
         # wave climate pdf (the normalized angular distribution of wave energy) to get a wave-climate averaged shoreline
         # diffusivity for every alongshore location
-        diff = (
-            -(
-                self._k
-                / (self._h_b_crit + self._d_sf)
-                * self._wave_height ** 2.4
-                * self._wave_period ** 0.2
-            )
-            * 365
-            * 24
-            * 3600
-            * (np.cos(self._angle_array) ** 0.2)
-            * (1.2 * np.sin(self._angle_array) ** 2 - np.cos(self._angle_array) ** 2)
-        )
+        # diff = (
+        #     -(
+        #         self._k
+        #         / (self._h_b_crit + self._d_sf)
+        #         * self._wave_height ** 2.4
+        #         * self._wave_period ** 0.2
+        #     )
+        #     * 365
+        #     * 24
+        #     * 3600
+        #     * (np.cos(self._angle_array) ** 0.2)
+        #     * (1.2 * np.sin(self._angle_array) ** 2 - np.cos(self._angle_array) ** 2)
+        # )
 
         # KA NOTE: the "same" method differs in Matlab and Numpy; here we pad and slice out the "same" equivalent
-        conv = np.convolve(wave_pdf, diff, mode="full")
-        npad = len(diff) - 1
-        first = npad - npad // 2
-        self._coast_diff = conv[first : first + len(wave_pdf)]
+        # conv = np.convolve(wave_pdf, diff, mode="full")
+        # npad = len(diff) - 1
+        # first = npad - npad // 2
+        # self._coast_diff = conv[first : first + len(wave_pdf)]
+        #
+        # self._di = (
+        #     np.r_[
+        #         self._ny,
+        #         np.arange(2, self._ny + 1),
+        #         np.arange(1, self._ny + 1),
+        #         np.arange(1, self._ny),
+        #         1,
+        #     ]
+        #     - 1
+        # )  # timestepping implicit diffusion equation (KA: -1 for python indexing)
+        #
+        # self._dj = (
+        #     np.r_[
+        #         1,
+        #         np.arange(1, self._ny),
+        #         np.arange(1, self._ny + 1),
+        #         np.arange(2, self._ny + 1),
+        #         self._ny,
+        #     ]
+        #     - 1
+        # )
+        ###############################################################################
+        # Alongshore sediment transport model dependent variables
+        ###############################################################################
 
-        self._di = (
-            np.r_[
-                self._ny,
-                np.arange(2, self._ny + 1),
-                np.arange(1, self._ny + 1),
-                np.arange(1, self._ny),
-                1,
-            ]
-            - 1
-        )  # timestepping implicit diffusion equation (KA: -1 for python indexing)
-
-        self._dj = (
-            np.r_[
-                1,
-                np.arange(1, self._ny),
-                np.arange(1, self._ny + 1),
-                np.arange(2, self._ny + 1),
-                self._ny,
-            ]
-            - 1
+        # initialize the alongshore transport model
+        self._transporter = AlongshoreTransporter(
+            self._x_s,
+            alongshore_section_length=self._dy,
+            time_step=self._dt,
+            change_in_shoreline_x=self._x_s_dt,
+            wave_height=self._wave_height,
+            wave_period=self._wave_period,
+            wave_angle=self._wave_angle,
+            wave_distribution=self._wave_dist,
         )
 
         ###############################################################################
@@ -826,24 +869,31 @@ class Brie:
 
         if self._inlet_model_on:
 
-            # array for changes to back barrier due to flood tidal deltas
-            self._x_b_fld_dt = np.zeros(int(self._ny))
+            if self._bseed:
+                self._inlets.wave_angle = self._wave_angle[self._time_index-1]
 
-            # KA, note this was originally empty
-            # barrier volume is barrier width times height + estimated inlet depth
-            self._barrier_volume = (
-                w * (self._h_b + 2) * np.sign(np.minimum(w, self._h_b))
-            )
+            # update inlet model parameters prior to advancing one TS
+            self._inlets.shoreline_x = self._x_s
+            self._inlets.bay_shoreline_x = self._x_b
 
-            # KA: added if statement here because error thrown for empty list
-            if (
-                np.size(self._inlet_idx) != 0
-            ):  # KA: inlet_idx is a list here with arrays of different size (from previous time loop)
-                self._barrier_volume[np.hstack(self._inlet_idx)] = np.inf
 
-                # add drowned barrier to list of inlets
-                self._inlet_idx.append(np.nonzero(self._barrier_volume < 0)[0])
-
+            # # array for changes to back barrier due to flood tidal deltas
+            # self._x_b_fld_dt = np.zeros(int(self._ny))
+            #
+            # # KA, note this was originally empty
+            # # barrier volume is barrier width times height + estimated inlet depth
+            # self._barrier_volume = (
+            #     w * (self._h_b + 2) * np.sign(np.minimum(w, self._h_b))
+            # )
+            #
+            # # KA: added if statement here because error thrown for empty list
+            # if (
+            #     np.size(self._inlet_idx) != 0
+            # ):  # KA: inlet_idx is a list here with arrays of different size (from previous time loop)
+            #     self._barrier_volume[np.hstack(self._inlet_idx)] = np.inf
+            #
+            #     # add drowned barrier to list of inlets
+            #     self._inlet_idx.append(np.nonzero(self._barrier_volume < 0)[0])
             # # storm for new inlet every 10 year
             # if (
             #     np.mod(self._t[self._time_index - 1], 10) < (self._dt / 2)
