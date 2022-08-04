@@ -166,13 +166,15 @@ class Brie:
         self._wave_high = wave_angle_high_fraction
         self._wave_angle = wave_angle  # the default initial wave angle
 
+        # moved to alongshore transporter(
         # # alongshore distribution of wave energy
         # self._wave_climl = int(180.0 / wave_angle_resolution)
         #
         # # k for alongshore transport
         # self._k = calc_alongshore_transport_k(gravity=self._g)
+        #  )
 
-        # asthon wave distribution
+        # asthon wave distribution from waves (needed for inlet spinner)
         self._wave_dist = ashton(a=self._wave_asym, h=self._wave_high, loc=-np.pi / 2, scale=np.pi)
 
         ###############################################################################
@@ -220,6 +222,7 @@ class Brie:
         self._marsh_cover = back_barrier_marsh_fraction
         self._RNG = np.random.default_rng(seed=1973)  # random number generator
 
+        # this is already commented out in master BRIE (not part of inlet spinner)
         # # set the dependent variables
         # if self._bseed:
         #     self.dependent(wave_angle=wave_angle, xs=xs)
@@ -328,6 +331,8 @@ class Brie:
         ###############################################################################
 
         self._basin_width = np.maximum(0, self._z / self._s_background - self._x_b)
+        # moved from the inlet model on section of master BRIE to outside the inlet class
+        # but it is the same calculation for basin width
 
         # initialize inlet module
         self._inlets = InletSpinner(
@@ -394,7 +399,7 @@ class Brie:
         # )  # equilibrium inlet velocity (non-dimensional)
 
         ###############################################################################
-        # shoreline change dependent variables
+        # shoreline change dependent variables (no longer needed?)
         ###############################################################################
 
         # shoreline change is NOT calculated using a single wave angle (as in Qs_in); instead, we account for the angle
@@ -443,7 +448,7 @@ class Brie:
         #     - 1
         # )
         ###############################################################################
-        # Alongshore sediment transport model dependent variables
+        # Alongshore sediment transport model dependent variables (added)
         ###############################################################################
 
         # initialize the alongshore transport model
@@ -474,27 +479,30 @@ class Brie:
         # KA: changed the saving arrays from matlab version to enable saving every time step in python, e.g., now if I
         # use the default dtsave=1000, the first value in these arrays (i.e., [0]) are the initial conditions and the
         # second value (i.e., [1]) is the first saving index at time_step=1000
-        self._inlet_nr = np.uint16(
-            np.zeros(np.size(np.arange(0, self._nt, self._dtsave)))
-        )
-        self._inlet_migr = np.int16(
-            np.zeros(np.size(np.arange(0, self._nt, self._dtsave)))
-        )
-        self._inlet_Qs_in = np.float32(
-            np.zeros(np.size(np.arange(0, self._nt, self._dtsave)))
-        )
-        self._inlet_alpha = np.float32(
-            np.zeros(np.size(np.arange(0, self._nt, self._dtsave)))
-        )
-        self._inlet_beta = np.float32(
-            np.zeros(np.size(np.arange(0, self._nt, self._dtsave)))
-        )
-        self._inlet_delta = np.float32(
-            np.zeros(np.size(np.arange(0, self._nt, self._dtsave)))
-        )
-        self._inlet_ai = np.int32(
-            np.zeros(np.size(np.arange(0, self._nt, self._dtsave)))
-        )
+
+        # LVB moved to inlet spinner
+
+        # self._inlet_nr = np.uint16(
+        #     np.zeros(np.size(np.arange(0, self._nt, self._dtsave)))
+        # )
+        # self._inlet_migr = np.int16(
+        #     np.zeros(np.size(np.arange(0, self._nt, self._dtsave)))
+        # )
+        # self._inlet_Qs_in = np.float32(
+        #     np.zeros(np.size(np.arange(0, self._nt, self._dtsave)))
+        # )
+        # self._inlet_alpha = np.float32(
+        #     np.zeros(np.size(np.arange(0, self._nt, self._dtsave)))
+        # )
+        # self._inlet_beta = np.float32(
+        #     np.zeros(np.size(np.arange(0, self._nt, self._dtsave)))
+        # )
+        # self._inlet_delta = np.float32(
+        #     np.zeros(np.size(np.arange(0, self._nt, self._dtsave)))
+        # )
+        # self._inlet_ai = np.int32(
+        #     np.zeros(np.size(np.arange(0, self._nt, self._dtsave)))
+        # )
 
         # KA - added these back after Eric's rewrite because I needed them for testing
         c_idx = np.uint8(np.zeros((self._ny, 1000)))  # noqa: F841
@@ -668,6 +676,9 @@ class Brie:
             raise ValueError("wave angle must be between -90 and 90 degrees")
         self._wave_angle = new_angle
 
+    # not entirely sure why these were moved to inlet spinner
+    # what are these variables?
+
     # def u(self, a_star, gam, ah_star):
     #     """new explicit relationship between boundary conditions and inlet area"""
     #     return np.sqrt(self._g * self._a0) * np.sqrt(
@@ -769,6 +780,7 @@ class Brie:
             self._drown = True
             print("Barrier Drowned - break")
 
+        # already commented out in master brie
         # if self._drown:
         #     raise BrieError(
         #         "Barrier has WIDTH DROWNED at t = {time} years".format(time=self.time)
@@ -827,6 +839,8 @@ class Brie:
             self._x_b_dt = np.zeros(self._ny)
             self._h_b_dt = np.zeros(self._ny)
 
+        # we make these calcs in alongshore transporter now?
+
         # if (
         #     self._ast_model_on
         # ):  # only alongshore transport calculation to estimate flux into inlets
@@ -882,6 +896,8 @@ class Brie:
             self._inlets.shoreline_x = self._x_s
             self._inlets.bay_shoreline_x = self._x_b
 
+            # moved to within the inlet class (
+
             # # array for changes to back barrier due to flood tidal deltas
             # self._x_b_fld_dt = np.zeros(int(self._ny))
             #
@@ -890,7 +906,6 @@ class Brie:
             # self._barrier_volume = (
             #     w * (self._h_b + 2) * np.sign(np.minimum(w, self._h_b))
             # )
-            #
             # # KA: added if statement here because error thrown for empty list
             # if (
             #     np.size(self._inlet_idx) != 0
@@ -899,13 +914,15 @@ class Brie:
             #
             #     # add drowned barrier to list of inlets
             #     self._inlet_idx.append(np.nonzero(self._barrier_volume < 0)[0])
+            # )
+
             # # storm for new inlet every 10 year
             # if (
             #     np.mod(self._t[self._time_index - 1], 10) < (self._dt / 2)
             #     and np.size(self._inlet_idx) < self._inlet_max
-            # ): NOT SURE THIS HAS BEEN INCORPORATED YET
+            # ): lines 908-914 in inlet spinner (uses general freq instead of 10)
 
-                ### START OF INLET SPINNER
+                ### START OF INLET SPINNER FUNCTIONS
             #     # potential basin length
             #     if np.size(self._inlet_idx) == 0:
             #         basin_length = self._Jmin + np.zeros(int(self._ny)).astype(float)
@@ -1294,7 +1311,7 @@ class Brie:
             #             np.fix(self._time_index / self._dtsave).astype(int) - 1
             #         ] = np.mean(ai_eq)
 
-        else:  # inlet model not on
+        else:  # inlet model not on (commented out sections were already commented)
             # Qs_in = 0
             # delta = 0
             # delta_r = 0
@@ -1302,6 +1319,7 @@ class Brie:
             self._x_b_fld_dt = 0
 
         # do implicit thing (updated on May 27, 2020 to force shoreline diffusivity to be greater than zero)
+        # copied from KA brie
         if self._ast_model_on:
 
             # update AlongshoreTransporter with new change in shoreline position
@@ -1379,6 +1397,8 @@ class Brie:
     ###############################################################################
 
     def finalize(self):
+        # LVB commented out most of the variables that were moved to inlet spinner
+        # these may need to be returned/updated here and then deleted but not sure
 
         # self.__dict__  # to look at attributes
         # del(self._t)
@@ -1400,11 +1420,11 @@ class Brie:
             self._Qinlet = self._Qinlet / self._dt  # put into m3/yr
             # self._Qinlet_norm = (self._Qinlet / self._dy)  # put into m3/m/yr
         else:
-            del self._inlet_Qs_in
-            del self._inlet_migr
+            # del self._inlet_Qs_in
+            # del self._inlet_migr
             del self._inlet_age
             del self._Qinlet
-            del self._inlet_ai
-            del self._inlet_delta
-            del self._inlet_beta
-            del self._inlet_alpha
+            # del self._inlet_ai
+            # del self._inlet_delta
+            # del self._inlet_beta
+            # del self._inlet_alpha
