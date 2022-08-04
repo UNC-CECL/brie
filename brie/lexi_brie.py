@@ -338,6 +338,7 @@ class Brie:
         self._inlets = InletSpinner(
             self._x_s,
             self._x_b,
+            self._x_s_dt,
             number_time_steps=self._nt,
             save_spacing=self._dtsave,
             basin_width=self._basin_width,
@@ -474,8 +475,8 @@ class Brie:
         self._Qshoreface = np.float32(
             np.zeros(int(self._nt))
         )  # KA: new variable for time series of shoreface flux [m^3/yr]
-        self._Qinlet = np.float32(np.zeros(int(self._nt)))  # inlet flux [m^3/yr]
-        self._inlet_age = []
+        # self._Qinlet = np.float32(np.zeros(int(self._nt)))  # inlet flux [m^3/yr]
+        # self._inlet_age = []
         # KA: changed the saving arrays from matlab version to enable saving every time step in python, e.g., now if I
         # use the default dtsave=1000, the first value in these arrays (i.e., [0]) are the initial conditions and the
         # second value (i.e., [1]) is the first saving index at time_step=1000
@@ -1422,7 +1423,7 @@ class Brie:
         else:
             # del self._inlet_Qs_in
             # del self._inlet_migr
-            del self._inlet_age
+            # del self._inlet_age
             del self._Qinlet
             # del self._inlet_ai
             # del self._inlet_delta
