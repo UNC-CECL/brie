@@ -339,6 +339,11 @@ class Brie:
             self._x_s,
             self._x_b,
             self._x_s_dt,
+            self._z,
+            self._bb_depth,
+            self._s_background,
+            self._rho_w,
+            self._w_b_crit,
             number_time_steps=self._nt,
             save_spacing=self._dtsave,
             basin_width=self._basin_width,
@@ -1417,15 +1422,15 @@ class Brie:
         # del self._coast_diff
         # del self._coast_qs
 
-        if self._inlet_model_on:
-            self._Qinlet = self._Qinlet / self._dt  # put into m3/yr
-            # self._Qinlet_norm = (self._Qinlet / self._dy)  # put into m3/m/yr
-        else:
-            # del self._inlet_Qs_in
-            # del self._inlet_migr
-            # del self._inlet_age
-            del self._Qinlet
-            # del self._inlet_ai
-            # del self._inlet_delta
-            # del self._inlet_beta
-            # del self._inlet_alpha
+        # if self._inlet_model_on:
+        #     self._Qinlet = self._Qinlet / self._dt  # put into m3/yr
+        #     self._Qinlet_norm = (self._Qinlet / self._dy)  # put into m3/m/yr
+        # else:
+        #     del self._inlet_Qs_in
+        #     del self._inlet_migr
+        #     del self._inlet_age
+        #     del self._Qinlet
+        #     del self._inlet_ai
+        #     del self._inlet_delta
+        #     del self._inlet_beta
+        #     del self._inlet_alpha

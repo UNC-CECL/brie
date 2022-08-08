@@ -749,6 +749,11 @@ class InletSpinner:
             shoreline_x,
             bay_shoreline_x,
             x_s_dt,
+            sea_level,
+            back_barrier_depth,
+            xshore_slope,
+            sea_water_density,
+            barrier_width_critical,
             number_time_steps,
             save_spacing,
             basin_width=None,
@@ -794,6 +799,9 @@ class InletSpinner:
         self._shoreline_x = np.asarray(shoreline_x, dtype=float)
         self._bay_shoreline_x = np.asarray(bay_shoreline_x, dtype=float)
         self._x_s_dt = x_s_dt
+        self._z = sea_level,
+        self._bb_depth = back_barrier_depth,
+        self._s_background = xshore_slope,
         self._h_b = barrier_height
         self._dy = alongshore_section_length
         self._dt = time_step
@@ -809,6 +817,8 @@ class InletSpinner:
         self._inlet_storm_frequency = inlet_storm_frequency
         self._create_inlet_now = False  # KA: added this boolean so we could be more flexible about when to add an inlet
         self._basin_width = basin_width
+        self._rho_w = sea_water_density
+        self._w_b_crit = barrier_width_critical
 
         # added from brie
         self._Jmin = inlet_min_spacing
@@ -853,6 +863,14 @@ class InletSpinner:
         self._t = np.arange(
             self._dt, (self._dt * self._nt) + self._dt, self._dt
         )  # time array, KA: note, if we can eliminate this variable, that would be great (i.e., we wouldn't need nt)
+        self._d_b = np.minimum(
+            self._bb_depth * np.ones(np.size(self._x_b)),
+            self._z - (self._s_background * self._x_b),
+        )  # basin depth
+        self._d_sf = (
+                8.9 * self._wave_height
+        )  # depth shoreface [m], Hallermeier (1983) or  Houston (1995)
+        # alternatively 0.018*wave_height*wave_period*sqrt(g./(R*grain_size))
 
         # initialize empty arrays
         self._inlet_idx = []
@@ -938,7 +956,7 @@ class InletSpinner:
             )  # do "fluid mechanics" of inlets
             # in paper they do sediment transport next, but I think it is okay to do it whenever
             self._inlet_idx, migr_up, delta, beta, alpha, Qs_in = inlet_morphodynamics(
-                self._inlet_idx, new_inlet, self._time_index, wi_cell, self._ny, self._dy, self._x_b_fld_dt, w,
+                self._inlet_idx, new_inlet, self._time, wi_cell, self._ny, self._dy, self._x_b_fld_dt, w,
                 self._q_s, self._h_b, di_eq, self._d_b, self._Qinlet, self._rho_w, ai_eq, wi_eq, self._wave_height,
                 self._x_b, self.shoreline_x, self._x_s_dt, self._w_b_crit, self._omega0, self._inlet_y, self._inlet_age,
                 self._d_sf
