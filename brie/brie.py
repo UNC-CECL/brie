@@ -127,6 +127,8 @@ class Brie:
             An array of wave angles for seeding (remove stochasticity).
         xs: float, optional
             An array of shoreline position for seeding (remove stochasticity).
+        shoreline_offset: optional
+
 
         Examples
         --------
