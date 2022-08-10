@@ -674,7 +674,7 @@ def inlet_morphodynamics(
         # KA: note that this differs from matlab version, here we do this all
         # in the for loop (but still [time step, inlet starting ID])
         inlet_age.append(  # KA: shouldn't this be time_index-1?
-            [time_index, inlet_idx[j - 1][0].astype("int32")]
+            [time_index - 1, inlet_idx[j - 1][0].astype("int32")]
         )
 
     # reset arrays
@@ -701,33 +701,33 @@ def inlet_statistics(
         inlet_ai,
         dt):
     if (
-            np.mod(time_index, dtsave) == 0
+            np.mod(time_index - 1, dtsave) == 0
     ):  # KA: modified this from matlab version so that I can save every time step in python
         # skip first time step (initial condition)
         inlet_nr[
-            np.fix(time_index / dtsave).astype(int) - 1
+            np.fix(time_index -1 / dtsave).astype(int) - 1
             ] = len(
             inlet_idx
         )  # number of inlets
         inlet_migr[
-            np.fix(time_index / dtsave).astype(int) - 1
+            np.fix(time_index -1 / dtsave).astype(int) - 1
             ] = np.mean(migr_up / dt)
 
         if np.size(inlet_idx) != 0:
             inlet_Qs_in[
-                np.fix(time_index / dtsave).astype(int) - 1
+                np.fix(time_index -1 / dtsave).astype(int) - 1
                 ] = np.mean(Qs_in)
             inlet_alpha[
-                np.fix(time_index / dtsave).astype(int) - 1
+                np.fix(time_index -1 / dtsave).astype(int) - 1
                 ] = np.mean(alpha)
             inlet_beta[
-                np.fix(time_index / dtsave).astype(int) - 1
+                np.fix(time_index -1 / dtsave).astype(int) - 1
                 ] = np.mean(beta)
             inlet_delta[
-                np.fix(time_index / dtsave).astype(int) - 1
+                np.fix(time_index -1 / dtsave).astype(int) - 1
                 ] = np.mean(delta)
             inlet_ai[
-                np.fix(time_index / dtsave).astype(int) - 1
+                np.fix(time_index -1 / dtsave).astype(int) - 1
                 ] = np.mean(ai_eq)
     return inlet_nr, inlet_migr
 
@@ -863,6 +863,7 @@ class InletSpinner:
         self._t = np.arange(
             self._dt, (self._dt * self._nt) + self._dt, self._dt
         )  # time array, KA: note, if we can eliminate this variable, that would be great (i.e., we wouldn't need nt)
+        self._w = self._x_b - self._x_s  # barrier width
         self._d_b = np.minimum(
             self._bb_depth * np.ones(np.size(self._x_b)),
             self._z - (self._s_background * self._x_b),
@@ -961,7 +962,7 @@ class InletSpinner:
                 self._x_b, self.shoreline_x, self._x_s_dt, self._w_b_crit, self._omega0, self._inlet_y, self._inlet_age,
                 self._d_sf
             )  # inlet morphodynamics
-            self._inlet_rn, self._inlet_migr = inlet_statistics(
+            inlet_rn, self._inlet_migr = inlet_statistics(
                 self._time, self._dtsave, self._inlet_nr, self._inlet_idx, self._inlet_migr, migr_up, delta,
                 self._inlet_delta, beta, self._inlet_beta, alpha, self._inlet_alpha, Qs_in, self._inlet_Qs_in,
                 ai_eq, self._inlet_ai, self._dt
