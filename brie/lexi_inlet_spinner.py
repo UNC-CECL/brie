@@ -27,6 +27,11 @@ import scipy.sparse
 import scipy.stats
 from numpy.lib.scimath import power as cpower, sqrt as csqrt
 from .alongshore_transporter import calc_alongshore_transport_k, calc_shoreline_angles
+# from alongshore_transporter import calc_alongshore_transport_k, calc_shoreline_angles
+
+
+# CONFUSED ABOUT X_S VS SHORELINE_X AND X_B VS BACK_BARRIER_X
+# WHY ARE THEY BOTH USED?
 
 SECONDS_PER_YEAR = 3600.0 * 24.0 * 365.0
 g = scipy.constants.g
@@ -679,7 +684,7 @@ def inlet_morphodynamics(
 
     # reset arrays
     new_inlet = np.array([])
-    return inlet_idx, migr_up, delta, beta, alpha, Qs_in, inlet_age
+    return inlet_idx, migr_up, delta, beta, alpha, Qs_in, inlet_age, Qinlet, inlet_y
 
 
 def inlet_statistics(
@@ -729,7 +734,7 @@ def inlet_statistics(
             inlet_ai[
                 np.fix(time_index -1 / dtsave).astype(int) - 1
                 ] = np.mean(ai_eq)
-    return inlet_nr, inlet_migr
+    return inlet_nr, inlet_migr, inlet_Qs_in, inlet_alpha, inlet_beta, inlet_delta, inlet_ai
 
 
 class InletSpinner:
@@ -738,7 +743,7 @@ class InletSpinner:
     Examples
     --------
     >>> from brie.lexi_inlet_spinner import InletSpinner
-    >>> inlets = InletSpinner([0.0, 0.0, 1.0, 0.0, 0.0])
+    >>> inlets = InletSpinner([0.0, 0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 10.0, 0.0, 0.0], 1, 0.0, 3, 0.001, 200, 100000, 1000)
     >>> inlets.update()
     """
 
@@ -748,14 +753,13 @@ class InletSpinner:
             self,
             shoreline_x,
             bay_shoreline_x,
-            x_s_dt,
             sea_level,
             back_barrier_depth,
             xshore_slope,
-            sea_water_density,
             barrier_width_critical,
             number_time_steps,
             save_spacing,
+            sea_water_density=1025,
             basin_width=None,
             inlet_storm_frequency=10,
             barrier_height=2.0,
@@ -778,10 +782,32 @@ class InletSpinner:
         ----------
         shoreline_x: float
             A shoreline position [m].
-        alongshore_section_length: float, optional
-            Length of each alongshore section [m].
-        time_step: float, optional
-            Time step of the numerical model [y].
+        bay_shoreline_x: float
+            The bay shoreline position [m].
+        sea_level:
+            height of sea level
+        back_barrier_depth: float
+            Depth of the back barrier [m].
+        xshore_slope: float
+            Background cross-shore slope (beta) [-].
+        barrier_width_critical: float
+            Critical barrier width [m].
+        number_time_step: int
+            Number of time steps.
+        save_spacing: float
+            Saving interval.
+        sea_water_density: int, optional
+            Density of sea water [kg/m^3].
+        basin_width:
+
+        inlet_storm_frequency: int, optional
+            years that pass between inlet formation.
+        barrier_height: float
+            height of barrier [m].
+        alongshore_section_length: float
+            1.0
+        time_step: float
+            1.0
         change_in_shoreline_x: float or array of float, optional
             Change in shoreline x position (accretion/erosion) [m].
         wave_height: float, optional
@@ -794,43 +820,50 @@ class InletSpinner:
             values means waves approaching from the right, and positive from
             the left [deg]
         wave_distribution: a scipy distribution
+        inlet_min_spacing: float, optional
+            10000.0
+        tide_amplitude: float, optional
+            wave amplitude
+        tide_frequency: float, optional
+            wave frequency
+        lagoon_manning_n: float, optional
+            mannings n for lagoon
+        back_barrier_marsh_fraction: float, optional
+            Percent of backbarrier covered by marsh and does not contribute to tidal prism.
         """
 
-        self._shoreline_x = np.asarray(shoreline_x, dtype=float)
-        self._bay_shoreline_x = np.asarray(bay_shoreline_x, dtype=float)
-        self._x_s_dt = x_s_dt
+        self._x_s = shoreline_x  # LVB added
+        self._x_b = bay_shoreline_x
         self._z = sea_level,
         self._bb_depth = back_barrier_depth,
         self._s_background = xshore_slope,
+        self._rho_w = sea_water_density
+        self._w_b_crit = barrier_width_critical
+        self._nt = number_time_steps
+        self._dtsave = save_spacing  # LVB
+        self._basin_width = basin_width
+        self._inlet_storm_frequency = inlet_storm_frequency
         self._h_b = barrier_height
         self._dy = alongshore_section_length
         self._dt = time_step
-        self._dtsave = save_spacing  # LVB
-        self._dx_dt = change_in_shoreline_x
+        self._x_s_dt = change_in_shoreline_x
         self._wave_height = wave_height
         self._wave_period = wave_period
         self._wave_angle = wave_angle
-        self._x_b = bay_shoreline_x
-        self._x_s = shoreline_x  # LVB added
-        # self._h_b = barrier_height    #LVB: repeated
-        self._nt = number_time_steps
-        self._inlet_storm_frequency = inlet_storm_frequency
-        self._create_inlet_now = False  # KA: added this boolean so we could be more flexible about when to add an inlet
-        self._basin_width = basin_width
-        self._rho_w = sea_water_density
-        self._w_b_crit = barrier_width_critical
-
+        # self._wave_distribution added later
         # added from brie
         self._Jmin = inlet_min_spacing
         self._a0 = tide_amplitude
         self._omega0 = tide_frequency
-        # self._inlet_asp = np.sqrt(0.005)  # aspect ratio inlet
         self._man_n = lagoon_manning_n
-        # self._u_e = 1  # inlet equilibrium velocity [m/s]
         self._inlet_max = 100  # maximum number of inlets (mostly for debugging)
         self._marsh_cover = back_barrier_marsh_fraction
 
+        self._create_inlet_now = False  # KA: added this boolean so we could be more flexible about when to add an inlet
+
         # inlet dependent variables/for saving data added by LVB
+        self._shoreline_x = np.asarray(shoreline_x, dtype=float)
+        self._bay_shoreline_x = np.asarray(bay_shoreline_x, dtype=float)
         self._Qinlet = np.float32(np.zeros(int(self._nt)))  # inlet flux [m^3/yr]
         self._inlet_age = []
         self._inlet_nr = np.uint16(
@@ -863,7 +896,8 @@ class InletSpinner:
         self._t = np.arange(
             self._dt, (self._dt * self._nt) + self._dt, self._dt
         )  # time array, KA: note, if we can eliminate this variable, that would be great (i.e., we wouldn't need nt)
-        self._w = self._x_b - self._x_s  # barrier width
+        # self._w = self._x_b - self._x_s  # barrier width
+        self._w = [a - b for a, b in zip(self._x_b, self._x_s)]
         self._d_b = np.minimum(
             self._bb_depth * np.ones(np.size(self._x_b)),
             self._z - (self._s_background * self._x_b),
@@ -938,8 +972,9 @@ class InletSpinner:
             )  # add drowned cells to list of inlets
 
         # create a new inlet every # years, unless at max # inlets, or if boolean says to create inlet this year
+        # this is different because we have replaced 10 with a variable for inlet frequency (which is 10)
         if (
-                np.mod(self._t[self._time - 1], self._inlet_storm_frequency)
+                np.mod(self._t[self._time], self._inlet_storm_frequency)
                 < (self._dt / 2)
                 and np.size(self._inlet_idx) < self._inlet_max
                 or self._create_inlet_now  # NOTE TO ERIC: there is probably a more elegant way to do this
@@ -956,17 +991,21 @@ class InletSpinner:
                 self._man_n, self._d_b, self._marsh_cover, self._basin_width, min_inlet_separation=10000
             )  # do "fluid mechanics" of inlets
             # in paper they do sediment transport next, but I think it is okay to do it whenever
-            self._inlet_idx, migr_up, delta, beta, alpha, Qs_in = inlet_morphodynamics(
+            self._inlet_idx, migr_up, delta, beta, alpha, Qs_in, self._Qinlet, self._inlet_y = inlet_morphodynamics(
                 self._inlet_idx, new_inlet, self._time, wi_cell, self._ny, self._dy, self._x_b_fld_dt, w,
                 self._q_s, self._h_b, di_eq, self._d_b, self._Qinlet, self._rho_w, ai_eq, wi_eq, self._wave_height,
                 self._x_b, self.shoreline_x, self._x_s_dt, self._w_b_crit, self._omega0, self._inlet_y, self._inlet_age,
                 self._d_sf
             )  # inlet morphodynamics
-            inlet_rn, self._inlet_migr = inlet_statistics(
+            self._inlet_nr, self._inlet_migr, self._inlet_Qs_in, self._inlet_alpha, self._inlet_beta, \
+                self._inlet_delta, self._inlet_ai = inlet_statistics(
                 self._time, self._dtsave, self._inlet_nr, self._inlet_idx, self._inlet_migr, migr_up, delta,
                 self._inlet_delta, beta, self._inlet_beta, alpha, self._inlet_alpha, Qs_in, self._inlet_Qs_in,
                 ai_eq, self._inlet_ai, self._dt
             )  # inlet statistics
+
+            self._Qinlet = self._Qinlet / self._dt  # put into m3/yr
+            # self._Qinlet_norm = (self._Qinlet / self._dy)  # put into m3/m/yr
 
     @property
     def wave_angle(self):

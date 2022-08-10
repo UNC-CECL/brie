@@ -7,6 +7,9 @@ import yaml
 from .alongshore_transporter import AlongshoreTransporter
 from .waves import ashton
 from .lexi_inlet_spinner import InletSpinner
+# from alongshore_transporter import AlongshoreTransporter
+# from waves import ashton
+# from lexi_inlet_spinner import InletSpinner
 
 
 def inlet_fraction(a, b, c, d, I):
@@ -338,12 +341,11 @@ class Brie:
         self._inlets = InletSpinner(
             self._x_s,
             self._x_b,
-            self._x_s_dt,
-            self._z,
-            self._bb_depth,
-            self._s_background,
-            self._rho_w,
-            self._w_b_crit,
+            sea_level=self._z,
+            back_barrier_depth=self._bb_depth,
+            xshore_slope=self._s_background,
+            sea_water_density=self._rho_w,
+            barrier_width_critical=self._w_b_crit,
             number_time_steps=self._nt,
             save_spacing=self._dtsave,
             basin_width=self._basin_width,
