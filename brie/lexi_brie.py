@@ -901,6 +901,7 @@ class Brie:
             # update inlet model parameters prior to advancing one TS
             self._inlets.shoreline_x = self._x_s
             self._inlets.bay_shoreline_x = self._x_b
+            self._inlets.update()
 
             # moved to within the inlet class (
 
@@ -1402,7 +1403,7 @@ class Brie:
     # Finalize: only return necessary variables
     ###############################################################################
 
-    def finalize(self):
+    # def finalize(self):
         # LVB commented out most of the variables that were moved to inlet spinner
         # these may need to be returned/updated here and then deleted but not sure
 
@@ -1412,11 +1413,11 @@ class Brie:
         # del self._inlet_idx
         # del self._inlet_idx_mat
         # del self._inlet_idx_close_mat
-        del self._barrier_volume
-        del self._h_b
-        del self._x_b
-        del self._x_s
-        del self._x_t
+        # del self._barrier_volume
+        # del self._h_b
+        # del self._x_b
+        # del self._x_s
+        # del self._x_t
         # del self._di
         # del self._dj
         # del self._coast_diff
