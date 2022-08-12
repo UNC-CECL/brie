@@ -134,7 +134,7 @@ class Brie:
 
         Examples
         --------
-        >>> from brie import Brie
+        >>> from brie.lexi_brie import Brie
         >>> brie = Brie()
         """
 
@@ -328,6 +328,7 @@ class Brie:
         self._x_b_dt = np.zeros(self._ny)
         self._x_s_dt = np.zeros(self._ny)
         self._h_b_dt = np.zeros(self._ny)
+        self._x_b_fld_dt = 0
 
         ###############################################################################
         # inlet model dependent variables

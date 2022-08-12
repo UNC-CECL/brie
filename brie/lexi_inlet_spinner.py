@@ -743,7 +743,7 @@ class InletSpinner:
     Examples
     --------
     >>> from brie.lexi_inlet_spinner import InletSpinner
-    >>> inlets = InletSpinner([0.0, 0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 10.0, 0.0, 0.0], 1, 0.0, 3, 0.001, 200, 100000, 1000)
+    >>> inlets = InletSpinner([0.0, 0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 10.0, 0.0, 0.0])
     >>> inlets.update()
     """
 
@@ -753,12 +753,12 @@ class InletSpinner:
             self,
             shoreline_x,
             bay_shoreline_x,
-            sea_level,
-            back_barrier_depth,
-            xshore_slope,
-            barrier_width_critical,
-            number_time_steps,
-            save_spacing,
+            sea_level=0.0,
+            back_barrier_depth=3.0,
+            xshore_slope=0.001,
+            barrier_width_critical=200.0,
+            number_time_steps=100000,
+            save_spacing=1000.0,
             sea_water_density=1025,
             basin_width=None,
             inlet_storm_frequency=10,
@@ -780,21 +780,21 @@ class InletSpinner:
 
         Parameters
         ----------
-        shoreline_x: float
+        shoreline_x: list of floats
             A shoreline position [m].
-        bay_shoreline_x: float
+        bay_shoreline_x: list of floats
             The bay shoreline position [m].
-        sea_level:
+        sea_level: optional
             height of sea level
-        back_barrier_depth: float
+        back_barrier_depth: float, optional
             Depth of the back barrier [m].
-        xshore_slope: float
+        xshore_slope: float, optional
             Background cross-shore slope (beta) [-].
-        barrier_width_critical: float
+        barrier_width_critical: float, optional
             Critical barrier width [m].
-        number_time_step: int
+        number_time_step: int, optional
             Number of time steps.
-        save_spacing: float
+        save_spacing: float, optional
             Saving interval.
         sea_water_density: int, optional
             Density of sea water [kg/m^3].
@@ -898,10 +898,18 @@ class InletSpinner:
         )  # time array, KA: note, if we can eliminate this variable, that would be great (i.e., we wouldn't need nt)
         # self._w = self._x_b - self._x_s  # barrier width
         self._w = [a - b for a, b in zip(self._x_b, self._x_s)]
-        self._d_b = np.minimum(
-            self._bb_depth * np.ones(np.size(self._x_b)),
-            self._z - (self._s_background * self._x_b),
-        )  # basin depth
+        # self._d_b = np.minimum(
+        #     self._bb_depth.astype(int) * np.ones(np.size(self._x_b)),
+        #     self._z - (self._s_background * self._x_b),
+        # )  # basin depth
+
+        # some of these were converted to tuples with one float value? not sure why that is
+        array1 = self._bb_depth[0] * np.ones(np.size(self._x_b))
+        array2 = np.zeros(len(self._x_b))
+        for index, val in enumerate(self._x_b):
+            arr_val = self._z[0] - val*self._s_background[0]
+            array2[index] = arr_val
+        self._d_b = np.minimum(array1, array2)  # basin depth
         self._d_sf = (
                 8.9 * self._wave_height
         )  # depth shoreface [m], Hallermeier (1983) or  Houston (1995)
@@ -974,7 +982,7 @@ class InletSpinner:
         # create a new inlet every # years, unless at max # inlets, or if boolean says to create inlet this year
         # this is different because we have replaced 10 with a variable for inlet frequency (which is 10)
         if (
-                np.mod(self._t[self._time], self._inlet_storm_frequency)
+                np.mod(self._t[int(self._time)], self._inlet_storm_frequency)
                 < (self._dt / 2)
                 and np.size(self._inlet_idx) < self._inlet_max
                 or self._create_inlet_now  # NOTE TO ERIC: there is probably a more elegant way to do this
