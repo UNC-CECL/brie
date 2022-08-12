@@ -4,7 +4,7 @@ from typing import Tuple
 import numpy
 from bmipy import Bmi
 
-from .brie import Brie
+from .lexi_brie import Brie
 
 
 class BrieBMI(Bmi):

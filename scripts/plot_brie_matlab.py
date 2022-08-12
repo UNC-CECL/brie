@@ -10,10 +10,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.io import loadmat
 
-from brie import Brie
+from brie.lexi_brie import Brie
 
 os.chdir(
-    "/Users/KatherineAnardeWheels/PycharmProjects/Barrier_Inlet_Environment_BRIE_Model/"
+    "/Users/Lexi/PycharmProjects/brie/tests/test_brie_matlab"
 )
 
 # subset of indices for testing grid discretization

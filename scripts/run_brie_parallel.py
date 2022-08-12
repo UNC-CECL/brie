@@ -15,7 +15,7 @@ import numpy as np
 from joblib import Parallel, delayed
 from scipy.io import loadmat
 
-from brie import Brie
+from brie.lexi_brie import Brie
 
 #%%
 ###############################################################################
