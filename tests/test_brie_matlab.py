@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 from scipy.io import loadmat
 
-from brie import Brie
+from brie.lexi_brie import Brie
 
 DATA_DIR = pathlib.Path(__file__).parent / "test_brie_matlab"
 
