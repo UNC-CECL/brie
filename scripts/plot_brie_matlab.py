@@ -60,7 +60,7 @@ def batchBrie(ii, jj, dt, dy, name, mat):
         brie.update()  # update the model by a time step
 
     # finalize by deleting variables and make Qinlet m^3/yr
-    brie.finalize()
+    # brie.finalize() LVB commented out this function
 
     return brie
 
