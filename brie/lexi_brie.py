@@ -186,7 +186,7 @@ class Brie:
 
         self._slr = [
             sea_level_rise_rate
-        ] * time_step_count  # KA: made this a TS so I can replace with accelerated SLR
+        ] * int(time_step_count)  # KA: made this a TS so I can replace with accelerated SLR
         self._s_background = xshore_slope
         self._w_b_crit = barrier_width_critical
         self._h_b_crit = barrier_height_critical
@@ -483,7 +483,7 @@ class Brie:
         self._Qshoreface = np.float32(
             np.zeros(int(self._nt))
         )  # KA: new variable for time series of shoreface flux [m^3/yr]
-        # self._Qinlet = np.float32(np.zeros(int(self._nt)))  # inlet flux [m^3/yr]
+        self._Qinlet = np.float32(np.zeros(int(self._nt)))  # inlet flux [m^3/yr]
         # self._inlet_age = []
         # KA: changed the saving arrays from matlab version to enable saving every time step in python, e.g., now if I
         # use the default dtsave=1000, the first value in these arrays (i.e., [0]) are the initial conditions and the
@@ -905,6 +905,7 @@ class Brie:
             self._inlets.shoreline_x = self._x_s
             self._inlets.bay_shoreline_x = self._x_b
             self._inlets.update()
+            self._Qinlet = self._inlets._Qinlet
 
             # moved to within the inlet class (
 
@@ -1406,7 +1407,7 @@ class Brie:
     # Finalize: only return necessary variables
     ###############################################################################
 
-    # def finalize(self):
+    def finalize(self):
         # LVB commented out most of the variables that were moved to inlet spinner
         # these may need to be returned/updated here and then deleted but not sure
 
@@ -1426,9 +1427,9 @@ class Brie:
         # del self._coast_diff
         # del self._coast_qs
 
-        # if self._inlet_model_on:
-        #     self._Qinlet = self._Qinlet / self._dt  # put into m3/yr
-        #     self._Qinlet_norm = (self._Qinlet / self._dy)  # put into m3/m/yr
+        if self._inlet_model_on:
+            self._Qinlet = self._Qinlet / self._dt  # put into m3/yr
+            self._Qinlet_norm = (self._Qinlet / self._dy)  # put into m3/m/yr
         # else:
         #     del self._inlet_Qs_in
         #     del self._inlet_migr
