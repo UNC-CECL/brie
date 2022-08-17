@@ -27,6 +27,7 @@ import scipy.sparse
 import scipy.stats
 from numpy.lib.scimath import power as cpower, sqrt as csqrt
 from .alongshore_transporter import calc_alongshore_transport_k, calc_shoreline_angles
+
 # from alongshore_transporter import calc_alongshore_transport_k, calc_shoreline_angles
 
 
@@ -525,13 +526,13 @@ def inlet_morphodynamics(
                                         )
 
             Qinlet[time] = Qinlet[
-                                         time
-                                         ] + (
-                                             (h_b[new_inlet] + d_b[new_inlet])
-                                             * w[new_inlet]
-                                             * wi_cell[j - 1]
-                                             * dy
-                                     )
+                               time
+                           ] + (
+                                   (h_b[new_inlet] + d_b[new_inlet])
+                                   * w[new_inlet]
+                                   * wi_cell[j - 1]
+                                   * dy
+                           )
 
         # alongshore flux brought into inlet
 
@@ -913,7 +914,7 @@ class InletSpinner:
         array1 = self._bb_depth[0] * np.ones(np.size(self._x_b))
         array2 = np.zeros(len(self._x_b))
         for index, val in enumerate(self._x_b):
-            arr_val = self._z[0] - val*self._s_background[0]
+            arr_val = self._z[0] - val * self._s_background[0]
             array2[index] = arr_val
         self._d_b = np.minimum(array1, array2)  # basin depth
         self._d_sf = (
@@ -922,7 +923,8 @@ class InletSpinner:
         # alternatively 0.018*wave_height*wave_period*sqrt(g./(R*grain_size))
 
         # self._z and self._s_back are tuples of one value
-        self._basin_width = np.maximum(0, (self._z[0] / self._s_background[0])*np.ones(np.size(self._x_b)) - self._x_b)  # basin width
+        self._basin_width = np.maximum(0, (self._z[0] / self._s_background[0]) * np.ones(
+            np.size(self._x_b)) - self._x_b)  # basin width
 
         # initialize empty arrays
         self._inlet_idx = []
@@ -1013,14 +1015,15 @@ class InletSpinner:
                 self._man_n, self._d_b, self._marsh_cover, self._basin_width
             )  # do "fluid mechanics" of inlets
             # in paper they do sediment transport next, but I think it is okay to do it whenever
-            self._inlet_idx, migr_up, delta, beta, alpha, self._Qs_in, self._inlet_age, self._Qinlet, self._inlet_y = inlet_morphodynamics(
-                self._inlet_idx, self._new_inlet, self._time, wi_cell, self._ny, self._dy, self._x_b_fld_dt, w,
-                self._q_s, self._h_b, di_eq, self._d_b, self._Qinlet, self._rho_w, ai_eq, wi_eq, self._wave_height,
-                self._x_b, self._x_s, self._x_s_dt, self._w_b_crit, self._omega0, self._inlet_y, self._inlet_age,
-                self._d_sf
-            )  # inlet morphodynamics
+            self._inlet_idx, migr_up, delta, beta, alpha, self._Qs_in, self._inlet_age, self._Qinlet, self._inlet_y = \
+                inlet_morphodynamics(
+                    self._inlet_idx, self._new_inlet, self._time, wi_cell, self._ny, self._dy, self._x_b_fld_dt, w,
+                    self._q_s, self._h_b, di_eq, self._d_b, self._Qinlet, self._rho_w, ai_eq, wi_eq, self._wave_height,
+                    self._x_b, self._x_s, self._x_s_dt, self._w_b_crit, self._omega0, self._inlet_y, self._inlet_age,
+                    self._d_sf
+                )  # inlet morphodynamics
             self._inlet_nr, self._inlet_migr, self._inlet_Qs_in, self._inlet_alpha, self._inlet_beta, \
-                self._inlet_delta, self._inlet_ai = inlet_statistics(
+            self._inlet_delta, self._inlet_ai = inlet_statistics(
                 self._time, self._dtsave, self._inlet_nr, self._inlet_idx, self._inlet_migr, migr_up, delta,
                 self._inlet_delta, beta, self._inlet_beta, alpha, self._inlet_alpha, self._Qs_in, self._inlet_Qs_in,
                 ai_eq, self._inlet_ai, self._dt
