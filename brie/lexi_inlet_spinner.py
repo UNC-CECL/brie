@@ -230,7 +230,7 @@ def create_inlet(inlet_idx, ny, dy, barrier_volume, min_inlet_separation=10000):
             inlet_idx: indices of all inlets
     """
 
-    # new_inlet = []
+    new_inlet = []
 
     # calculate basin length
     if np.size(inlet_idx) == 0:
@@ -547,9 +547,6 @@ def inlet_morphodynamics(
         ).astype(int)
         inlet_nex[j - 1] = np.mod(inlet_idx[j - 1][-1] + 1, ny)
         inlet_prv[j - 1] = np.mod(inlet_idx[j - 1][0] - 1, ny)
-        # LVB EDITS--------------------------------------------
-        # inlet_nex[j - 1] = np.mod(inlet_idx[j - 1] + 1, ny)
-        # inlet_prv[j - 1] = np.mod(inlet_idx[j - 1] - 1, ny)
 
         # find momentum balance of inlet to determine sediment
         # distribution fractions
@@ -559,15 +556,11 @@ def inlet_morphodynamics(
         h_b[inlet_idx[j - 1]] = 0
 
         # constrain to not widen
-        Ab_prv = w[inlet_prv[j - 1]] * (
+        Ab_prv = w[int(inlet_prv[j - 1])] * (
                 h_b[inlet_idx[j - 1][0]] + di_eq[j - 1]
         )
-        # LVB EDITS--------------------------------------------
-        # Ab_prv = w[inlet_prv[j - 1]] * (
-        #         h_b[inlet_idx[j - 1]] + di_eq[j - 1]
-        # )
-        Ab_nex = w[inlet_nex[j - 1]] * (
-                h_b[inlet_nex[j - 1]] + di_eq[j - 1]
+        Ab_nex = w[int(inlet_nex[j - 1])] * (
+                h_b[int(inlet_nex[j - 1])] + di_eq[j - 1]
         )
 
         # do fld delta eq volume
@@ -580,16 +573,6 @@ def inlet_morphodynamics(
                 * wi_eq[j - 1]
                 * d_b[inlet_idx[j - 1][0]]
         )
-        # LVB EDITS--------------------------------------------
-        # Vfld = (
-        #         (
-        #                 x_b[inlet_idx[j - 1]]
-        #                 - x_s[inlet_idx[j - 1]]
-        #                 + w_b_crit
-        #         )
-        #         * wi_eq[j - 1]
-        #         * d_b[inlet_idx[j - 1]]
-        # )
 
         Vfld_max = 1e4 * (u_e * ai_eq[j - 1] / 2 / omega0) ** 0.37
 
@@ -642,7 +625,7 @@ def inlet_morphodynamics(
         # spread fld tidal delta along one more cell alongshore in both directions
         temp_idx = np.r_[
             inlet_prv[j - 1], inlet_idx[j - 1], inlet_nex[j - 1]
-        ]
+        ].astype(int)
 
         x_b_fld_dt[temp_idx] = x_b_fld_dt[temp_idx] + fld_delta / (
                 np.size(temp_idx) * dy
@@ -661,29 +644,17 @@ def inlet_morphodynamics(
         inlet_y[inlet_idx[j - 1][0]] = (
                 inlet_y[inlet_idx[j - 1][0]] + migr_up[j - 1] / dy
         )
-        # LVB EDITS--------------------------------------------
-        # inlet_y[inlet_idx[j - 1]] = (
-        #         inlet_y[inlet_idx[j - 1]] + migr_up[j - 1] / dy
-        # )
 
         # how far are the inlets in their gridcell?
         # (or is inlet_y>1 or <0 and should the inlet hop one grid cell?)
         migr_int = np.floor(
             inlet_y[inlet_idx[j - 1][0]]
         )  # KA: unsure about these too
-        # LVB EDITS--------------------------------------------
-        # migr_int = np.floor(
-        #     inlet_y[inlet_idx[j - 1]]
-        # )  # KA: unsure about these too
 
         migr_res = np.mod(inlet_y[inlet_idx[j - 1][0]], 1)
-        # LVB EDITS--------------------------------------------
-        # migr_res = np.mod(inlet_y[inlet_idx[j - 1]], 1)
 
         # reset old grid cell
         inlet_y[inlet_idx[j - 1][0]] = 0
-        # LVB EDITS--------------------------------------------
-        # inlet_y[inlet_idx[j - 1]] = 0
 
         # move inlet in gridcell
         inlet_idx[j - 1] = np.mod(
@@ -691,8 +662,6 @@ def inlet_morphodynamics(
         ).astype(int)
 
         inlet_y[inlet_idx[j - 1][0]] = migr_res
-        # LVB EDITS--------------------------------------------
-        # inlet_y[inlet_idx[j - 1]] = migr_res
 
         # how much q flood tidal delta in total
         Qinlet[time] = (
@@ -807,7 +776,6 @@ class InletSpinner:
             barrier_height=2.0,
             alongshore_section_length=1.0,
             time_step=1.0,
-            change_in_shoreline_x=0.0,
             wave_height=1.0,
             wave_period=10.0,
             wave_angle=0.0,
@@ -850,8 +818,6 @@ class InletSpinner:
             1.0
         time_step: float
             1.0
-        change_in_shoreline_x: float or array of float, optional
-            Change in shoreline x position (accretion/erosion) [m].
         wave_height: float, optional
             Mean offshore significant wave height [m].
         wave_period: float, optional
@@ -888,7 +854,6 @@ class InletSpinner:
         self._h_b = barrier_height
         self._dy = alongshore_section_length
         self._dt = time_step
-        self._x_s_dt = change_in_shoreline_x
         self._wave_height = wave_height
         self._wave_period = wave_period
         self._wave_angle = wave_angle
@@ -967,6 +932,7 @@ class InletSpinner:
         #     float
         # )  # KA: we use this variable for NaN operations
         self._inlet_idx_close_mat = np.array([])
+        self._x_s_dt = np.zeros(self._ny)
         self._inlet_y = np.zeros(self._ny)
         self._h_b = 2 * np.ones(self._ny)
         self._barrier_volume = np.array([])
@@ -1047,7 +1013,7 @@ class InletSpinner:
                 self._man_n, self._d_b, self._marsh_cover, self._basin_width
             )  # do "fluid mechanics" of inlets
             # in paper they do sediment transport next, but I think it is okay to do it whenever
-            self._inlet_idx, migr_up, delta, beta, alpha, Qs_in, self._Qinlet, self._inlet_y = inlet_morphodynamics(
+            self._inlet_idx, migr_up, delta, beta, alpha, self._Qs_in, self._inlet_age, self._Qinlet, self._inlet_y = inlet_morphodynamics(
                 self._inlet_idx, self._new_inlet, self._time, wi_cell, self._ny, self._dy, self._x_b_fld_dt, w,
                 self._q_s, self._h_b, di_eq, self._d_b, self._Qinlet, self._rho_w, ai_eq, wi_eq, self._wave_height,
                 self._x_b, self._x_s, self._x_s_dt, self._w_b_crit, self._omega0, self._inlet_y, self._inlet_age,
@@ -1056,7 +1022,7 @@ class InletSpinner:
             self._inlet_nr, self._inlet_migr, self._inlet_Qs_in, self._inlet_alpha, self._inlet_beta, \
                 self._inlet_delta, self._inlet_ai = inlet_statistics(
                 self._time, self._dtsave, self._inlet_nr, self._inlet_idx, self._inlet_migr, migr_up, delta,
-                self._inlet_delta, beta, self._inlet_beta, alpha, self._inlet_alpha, Qs_in, self._inlet_Qs_in,
+                self._inlet_delta, beta, self._inlet_beta, alpha, self._inlet_alpha, self._Qs_in, self._inlet_Qs_in,
                 ai_eq, self._inlet_ai, self._dt
             )  # inlet statistics
 
@@ -1073,8 +1039,8 @@ class InletSpinner:
 
     @wave_angle.setter
     def wave_angle(self, new_val):
-        # if np.abs(new_val) <= np.deg2rad(90):
-        #     raise ValueError("wave angle must be between -pi/2 and pi/2")
+        if np.abs(new_val) <= np.deg2rad(90):
+            raise ValueError("wave angle must be between -pi/2 and pi/2")
         self._wave_angle = new_val
 
     @property
