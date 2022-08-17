@@ -354,7 +354,6 @@ class Brie:
             barrier_height=self._h_b,
             alongshore_section_length=self._dy,
             time_step=self._dt,
-            change_in_shoreline_x=0.0,
             wave_height=self._wave_height,
             wave_period=self._wave_period,
             wave_angle=self._wave_angle,
@@ -548,10 +547,11 @@ class Brie:
         )  # added by KA to represent the actual initial s_sf
 
         # initialize empty arrays for barrier model (added by KA for coupling)
-        self._x_t_dt = np.zeros(self._ny)
-        self._x_b_dt = np.zeros(self._ny)
-        self._x_s_dt = np.zeros(self._ny)
-        self._h_b_dt = np.zeros(self._ny)
+        # LVB commented out (repeated)
+        # self._x_t_dt = np.zeros(self._ny)
+        # self._x_b_dt = np.zeros(self._ny)
+        # self._x_s_dt = np.zeros(self._ny)
+        # self._h_b_dt = np.zeros(self._ny)
 
     @classmethod
     def from_yaml(cls, filepath):
