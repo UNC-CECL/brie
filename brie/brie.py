@@ -6,8 +6,7 @@ from scipy.sparse.linalg import spsolve
 
 from .alongshore_transporter import calc_alongshore_transport_k
 from .waves import WaveAngleGenerator
-# from alongshore_transporter import calc_alongshore_transport_k
-# from waves import WaveAngleGenerator
+
 
 def inlet_fraction(a, b, c, d, I):
     """what are the inlet fractions"""
