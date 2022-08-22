@@ -16,7 +16,7 @@ DATA_DIR = pathlib.Path(__file__).parent / "test_brie_matlab"
 
 
 def load_test_cases(datadir):
-    data = loadmat(datadir / "test_brie_matlab_seed.mat")["output"]
+    data = loadmat(datadir / "test_brie_matlab_seed.mat")["output"]  # why is this taking output and not b_struct??
     cases = []
     for inputs in data.flat:
         cases.append(
