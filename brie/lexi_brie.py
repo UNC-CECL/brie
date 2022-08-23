@@ -283,7 +283,6 @@ class Brie:
         )  # position back barrier [m]
 
         self._h_b = 2 + np.zeros(self._ny)  # height barrier [m]
-        self._barrier_volume = np.array([])
 
         # initialize empty arrays for barrier model (added by KA for coupling)
         self._x_t_dt = np.zeros(self._ny)
