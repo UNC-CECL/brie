@@ -553,7 +553,9 @@ class Brie:
 
             # overwash fluxes [m^3/m]
             Qow_b = self._dt * self._Qow_max * Vd_b / np.maximum(Vd, self._Vd_max)
+            # overwash flux deposited in the back barrier (LTA14)
             Qow_h = self._dt * self._Qow_max * Vd_h / np.maximum(Vd, self._Vd_max)
+            # overwash flux deposited on top of the existing barrier (LTA14)
             Qow = Qow_b + Qow_h
 
             # shoreface flux [m^3/m]
@@ -619,6 +621,8 @@ class Brie:
 
         # do implicit thing (updated on May 27, 2020 to force shoreline diffusivity to be greater than zero)
         # copied from KA brie
+        # I think we will want to put this before inlets, OR we just need to use the necessary functions
+        # in inlet spinner coming from ast
         if self._ast_model_on:
 
             # update AlongshoreTransporter with new change in shoreline position
