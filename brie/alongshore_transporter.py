@@ -176,7 +176,7 @@ def calc_coast_qs(wave_angle, wave_height=1.0, wave_period=10.0):
         * AlongshoreTransporter.K
         * (np.cos(wave_angle) ** 1.2)
         * np.sin(wave_angle)
-    )  # [m3/yr]
+    )  # [m3/yr] used to calculate Qs in master BRIE
 
 
 def calc_inlet_alongshore_transport(
@@ -522,6 +522,26 @@ class AlongshoreTransporter:
     def update(self):
 
         self._time += self._dt
+
+        # lexi added:
+        # self._Qs = (
+        #         self._dt
+        #         * self._coast_qs[
+        #             np.minimum(
+        #                 self._wave_climl,
+        #                 np.maximum(
+        #                     1,
+        #                     np.round(
+        #                         self._wave_climl
+        #                         - wave_ang
+        #                         - (self._wave_climl / 180 * theta)
+        #                         + 1
+        #                     ),
+        #                 ),
+        #             ).astype(int)
+        #             - 1
+        #             ]
+        # ).astype(float)
 
         # self._wave_angle = self._wave_distribution.rvs(size=1)
 
