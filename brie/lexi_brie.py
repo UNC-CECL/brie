@@ -21,7 +21,7 @@ class BrieError(Exception):
     pass
 
 
-class Brie:
+class Lexi_Brie:
     def __init__(
         self,
         name="ExampleBarrierPlot5",
@@ -131,8 +131,8 @@ class Brie:
 
         Examples
         --------
-        >>> from brie.lexi_brie import Brie
-        >>> brie = Brie()
+        >>> from brie.lexi_brie import Lexi_Brie
+        >>> brie = Lexi_Brie()
         """
 
         # name of output file
