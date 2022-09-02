@@ -166,7 +166,7 @@ class Lexi_Brie:
         self._wave_high = wave_angle_high_fraction
         self._wave_angle = wave_angle  # the default initial wave angle
 
-        # asthon wave distribution from waves (needed for inlet spinner)
+        # asthon wave distribution from waves (needed for inlet spinner and AST!!!)
         self._wave_dist = ashton(a=self._wave_asym, h=self._wave_high, loc=-np.pi / 2, scale=np.pi)
 
         ###############################################################################
