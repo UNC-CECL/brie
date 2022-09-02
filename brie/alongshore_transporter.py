@@ -261,12 +261,16 @@ def calc_coast_diffusivity(
 
     # all_angles, step = np.linspace(-89.5, 89.5, n_bins, retstep=True)
     # all_angles = np.deg2rad(all_angles)
-    all_angles, step = np.linspace(-np.pi / 2.0, np.pi / 2.0, n_bins, retstep=True)
+    all_angles, step = np.linspace(-np.pi / 2.0, np.pi / 2.0, n_bins, retstep=True)  # same
 
     d_sf = 8.9 * wave_height
 
     # e_phi_0 = wave_pdf(all_angles) * np.deg2rad(step)
-    e_phi_0 = wave_pdf(all_angles) * step
+    e_phi_0 = wave_pdf(all_angles) * step  # same as wave_pdf in master except its not
+    # stems from wave_pdf function not matching
+    # wave_pdf is wave_distribution.pdf
+    # wave_distribution comes from lexi_brie as wave_dist
+    # wave_dist is ashton(a=self._wave_asym, h=self._wave_high, loc=-np.pi / 2, scale=np.pi)
 
     # KA: don't understand the negative here, but it works
     diff_phi0_theta = (
@@ -353,6 +357,7 @@ def _build_tridiagonal_matrix(diagonal, lower=None, upper=None):
 
 
 def _build_matrix(
+    shoreline_angles,
     shoreline_x,
     wave_distribution,
     dy=1.0,
@@ -381,7 +386,7 @@ def _build_matrix(
         Alongshore transport along the shoreline.
     """
 
-    shoreline_angles = calc_shoreline_angles(shoreline_x, spacing=dy)
+    # shoreline_angles = calc_shoreline_angles(shoreline_x, spacing=dy)
 
     coast_diff, _ = calc_coast_diffusivity(
         wave_distribution.pdf,
@@ -419,7 +424,7 @@ def _build_matrix(
         + dx_dt
     )
 
-    return mat.tocsc(), rhs, r_ipl
+    return mat.tocsc(), rhs, r_ipl, coast_diff
 
 
 class AlongshoreTransporter:
@@ -542,6 +547,7 @@ class AlongshoreTransporter:
         #             - 1
         #             ]
         # ).astype(float)
+        # --------------------------------------------------------------------------------------------------------------
 
         # self._wave_angle = self._wave_distribution.rvs(size=1)
 
@@ -556,7 +562,8 @@ class AlongshoreTransporter:
         # )
 
         # calculates diffusivity and then returns the tridiagonal matrix and right-hand-side of Equation 41 in NLT19
-        mat, rhs, _ = _build_matrix(
+        mat, rhs, _ , self._coast_diff = _build_matrix(
+            self._shoreline_angles,
             self._shoreline_x,
             self._wave_distribution,
             dy=self._dy,
