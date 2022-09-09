@@ -138,7 +138,7 @@ class WaveAngleGenerator:
             )
             * 4.0
             / np.pi
-        )
+        )  # returns array [0, 0.20372, 0.81487, 0.20372, 0.05093]
 
         # f = (
         #         np.array(
@@ -152,7 +152,7 @@ class WaveAngleGenerator:
         #         )
         #         * 4.0
         #         / np.pi
-        # )
+        # )  # returns array [0.20372, 0.81487, 0.20372, 0.05093, 0.05093]
 
         self._wave_pdf = interp1d(x, f, kind="next", bounds_error=False, fill_value=0.0)
         self._wave_cdf = interp1d(

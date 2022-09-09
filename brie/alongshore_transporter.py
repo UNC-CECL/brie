@@ -220,7 +220,7 @@ def calc_coast_diffusivity(
     wave_height=1.0,
     wave_period=10.0,
     berm_ele=2.0,
-    n_bins=181,
+    n_bins=180,  # LVB changed from 181 to 180
 ):
     r"""Calculate sediment diffusion along a coastline. Corresponds to Equations 37-39 in NLT19 [1]_, with formulations from
     AM06 [2]_.
@@ -271,6 +271,9 @@ def calc_coast_diffusivity(
     # wave_pdf is wave_distribution.pdf
     # wave_distribution comes from lexi_brie as wave_dist
     # wave_dist is ashton(a=self._wave_asym, h=self._wave_high, loc=-np.pi / 2, scale=np.pi)
+    # SO this is like saying ashton.pdf(all_angles) ?
+    # I think this is super confusing and should be way more direct because it is just reference variable after
+    # reference variable
 
     # KA: don't understand the negative here, but it works
     diff_phi0_theta = (
