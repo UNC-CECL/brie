@@ -554,6 +554,18 @@ class Brie:
         return self._x_s
 
     @property
+    def x_s_save(self):
+        return self._x_s_save
+
+    @property
+    def x_t_save(self):
+        return self._x_t_save
+
+    @property
+    def s_sf_save(self):
+        return self._s_sf_save
+
+    @property
     def x_b(self):
         return self._x_b
 
