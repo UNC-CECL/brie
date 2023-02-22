@@ -104,6 +104,7 @@ celerybeat.pid
 # Environments
 .env
 .venv
+.nox
 env/
 venv/
 brie_venv/
