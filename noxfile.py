@@ -12,13 +12,8 @@ ROOT = pathlib.Path(__file__).parent
 @nox.session(venv_backend="mamba")
 def test(session: nox.Session) -> None:
     """Run the tests."""
-    session.conda_install(
-        "bmi-tester",
-        "pytest",
-        "pytest-cov",
-        "pytest-datadir",
-        "pytest-xdist",
-    )
+    session.conda_install("bmi-tester")
+    session.conda_install("--file", "requirements-testing.txt")
     session.conda_install("--file", "requirements.txt")
     session.install(".", "--no-deps")
 
@@ -59,14 +54,9 @@ def test_notebooks(session: nox.Session) -> None:
         "-vvv",
     ] + session.posargs
 
-    session.install(
-        "nbmake",
-        "pytest",
-        "pytest-cov",
-        "pytest-datadir",
-        "pytest-xdist",
-    )
-    session.install("matplotlib")
+    session.install("-r", "requirements-testing.txt")
+    session.install("nbmake")
+    session.install("-r", "notebooks/requirements.txt")
     session.install(".")
 
     session.run(*args)

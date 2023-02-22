@@ -42,6 +42,9 @@ documentation = "https://github.com/UNC-CECL/brie"
 repository = "https://github.com/UNC-CECL/brie"
 changelog = "https://raw.githubusercontent.com/UNC-CECL/brie/master-brie/CHANGES.rst"
 
+[project.optional-dependencies]
+dev = ["nox"]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["brie*"]
