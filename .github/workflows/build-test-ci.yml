@@ -33,5 +33,5 @@ jobs:
 
       - name: Test
         run: |
-          nox -s test
+          nox --sessions test test-notebooks
           bmi-test --config-file=tests/test_bmi/brie.yaml --root-dir=tests/test_bmi -vvv brie.brie_bmi:BrieBMI
