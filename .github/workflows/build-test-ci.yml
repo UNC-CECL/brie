@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: [3.8, 3.9]
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
 
     steps:
       - uses: actions/checkout@v2
@@ -26,16 +26,12 @@ jobs:
           channel-priority: true
 
       - name: Show conda installation info
-        run: conda info
-
-      - name: Build and install package
-        run: pip install .
-
-      - name: Install testing dependencies
-        run: conda install --file=requirements-testing.txt -c conda-forge
+        run: |
+          conda install mamba
+          pip install nox
+          conda info
 
       - name: Test
         run: |
-          python -c 'import brie; print(brie.__version__)'
-          pytest -vvv
+          nox -s test
           bmi-test --config-file=tests/test_bmi/brie.yaml --root-dir=tests/test_bmi -vvv brie.brie_bmi:BrieBMI
