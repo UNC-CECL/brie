@@ -33,6 +33,13 @@ def test(session: nox.Session) -> None:
     if "CI" in os.environ:
         args.append(f"--cov-report=xml:{ROOT.absolute()!s}/coverage.xml")
     session.run("pytest", *args)
+    session.run(
+        "bmi-test",
+        "--config-file=tests/test_bmi/brie.yaml",
+        "--root-dir=tests/test_bmi",
+        "-vvv",
+        "brie.brie_bmi:BrieBMI",
+    )
 
     if "CI" not in os.environ:
         session.run("coverage", "report", "--ignore-errors", "--show-missing")
