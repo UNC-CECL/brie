@@ -1,9 +1,9 @@
-name: Build/Test CI
+name: Tests
 
 on: [push, pull_request]
 
 jobs:
-  build-and-test:
+  test:
     runs-on: ${{ matrix.os }}
 
     defaults:
@@ -20,18 +20,22 @@ jobs:
 
       - uses: conda-incubator/setup-miniconda@v2
         with:
-          auto-update-conda: true
           python-version: ${{ matrix.python-version }}
-          channels: conda-forge
-          channel-priority: true
+          miniforge-variant: Mambaforge
+          miniforge-version: latest
 
-      - name: Show conda installation info
+      - name: Install nox
         run: |
-          conda install mamba
           pip install nox
-          conda info
 
       - name: Test
         run: |
-          nox --sessions test test-notebooks
-          bmi-test --config-file=tests/test_bmi/brie.yaml --root-dir=tests/test_bmi -vvv brie.brie_bmi:BrieBMI
+          nox -s test
+
+      - name: Test Notebooks
+        run: |
+          nox -s test-notebooks
+
+      - name: Test BMI
+        run: |
+          nox -s test-bmi

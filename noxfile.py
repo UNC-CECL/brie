@@ -8,13 +8,11 @@ PROJECT = "brie"
 ROOT = pathlib.Path(__file__).parent
 
 
-@nox.session(venv_backend="mamba")
+@nox.session
 def test(session: nox.Session) -> None:
     """Run the tests."""
-    session.conda_install("bmi-tester")
     session.conda_install("--file", "requirements-testing.txt")
-    session.conda_install("--file", "requirements.txt")
-    session.install(".", "--no-deps")
+    session.install(".")
 
     args = [
         "-n",
@@ -27,6 +25,18 @@ def test(session: nox.Session) -> None:
     if "CI" in os.environ:
         args.append(f"--cov-report=xml:{ROOT.absolute()!s}/coverage.xml")
     session.run("pytest", *args)
+
+    if "CI" not in os.environ:
+        session.run("coverage", "report", "--ignore-errors", "--show-missing")
+
+
+@nox.session(name="test-bmi", venv_backend="mamba")
+def test_bmi(session: nox.Session) -> None:
+    """Run the tests."""
+    session.conda_install("bmi-tester")
+    session.conda_install("--file", "requirements.txt")
+    session.install(".", "--no-deps")
+
     session.run(
         "bmi-test",
         "--config-file=tests/test_bmi/brie.yaml",
@@ -35,11 +45,8 @@ def test(session: nox.Session) -> None:
         "brie.brie_bmi:BrieBMI",
     )
 
-    if "CI" not in os.environ:
-        session.run("coverage", "report", "--ignore-errors", "--show-missing")
 
-
-@nox.session(name="test-notebooks")  # , venv_backend="mamba")
+@nox.session(name="test-notebooks")
 def test_notebooks(session: nox.Session) -> None:
     """Run the notebooks."""
     args = [
