@@ -1,6 +1,55 @@
 [build-system]
 requires = ["setuptools"]
 
+[project]
+name = "brie"
+description = "The Barrier Inlet Environment (BRIE) Model"
+authors = [
+    {name = "Katherine Anarde"},
+    {email = "kanarde@ncsu.edu"},
+]
+maintainers = [
+    {name = "Katherine Anarde"},
+    {email = "kanarde@ncsu.edu"},
+]
+keywords = ["earth science", "coast", "barrier inlet"]
+license = {file = "LICENSE.rst"}
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3.6",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Scientific/Engineering :: Physics",
+]
+requires-python = ">=3.6"
+dependencies = [
+  "bmipy",
+  "numpy",
+  "pyyaml",
+  "scipy",
+]
+dynamic = ["readme", "version"]
+
+[project.urls]
+homepage = "https://github.com/UNC-CECL/brie"
+documentation = "https://github.com/UNC-CECL/brie"
+repository = "https://github.com/UNC-CECL/brie"
+changelog = "https://raw.githubusercontent.com/UNC-CECL/brie/master-brie/CHANGES.rst"
+
+[tool.setuptools.packages.find]
+where = ["."]
+incldue = ["brie*"]
+
+[tool.setuptools.dynamic]
+readme = {file = ["README.rst", "AUTHORS.rst", "CHANGES.rst"]}
+version = {attr = "brie._version.__version__"}
+
 [tool.pytest.ini_options]
 minversion = "6.0"
 testpaths = ["brie", "tests"]
