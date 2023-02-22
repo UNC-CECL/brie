@@ -11,7 +11,7 @@ ROOT = pathlib.Path(__file__).parent
 @nox.session
 def test(session: nox.Session) -> None:
     """Run the tests."""
-    session.conda_install("--file", "requirements-testing.txt")
+    session.install("--file", "requirements-testing.txt")
     session.install(".")
 
     args = [
@@ -89,7 +89,6 @@ def build(session: nox.Session) -> None:
 def release(session):
     """Tag, build and publish a new release to PyPI."""
     session.install("zest.releaser[recommended]")
-    session.install("zestreleaser.towncrier")
     session.run("fullrelease")
 
 
