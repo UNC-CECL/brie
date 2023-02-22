@@ -44,7 +44,7 @@ changelog = "https://raw.githubusercontent.com/UNC-CECL/brie/master-brie/CHANGES
 
 [tool.setuptools.packages.find]
 where = ["."]
-incldue = ["brie*"]
+include = ["brie*"]
 
 [tool.setuptools.dynamic]
 readme = {file = ["README.rst", "AUTHORS.rst", "CHANGES.rst"]}
