@@ -861,7 +861,7 @@ class Brie:
 
             # KA: added if statement here because error thrown for empty list
             if (
-                np.size(self._inlet_idx) != 0
+                len(self._inlet_idx) != 0
             ):  # KA: inlet_idx is a list here with arrays of different size (from previous time loop)
                 self._barrier_volume[np.hstack(self._inlet_idx)] = np.inf
 
@@ -871,11 +871,11 @@ class Brie:
             # storm for new inlet every 10 year
             if (
                 np.mod(self._t[self._time_index - 1], 10) < (self._dt / 2)
-                and np.size(self._inlet_idx) < self._inlet_max
+                and len(self._inlet_idx) < self._inlet_max
             ):
 
                 # potential basin length
-                if np.size(self._inlet_idx) == 0:
+                if len(self._inlet_idx) == 0:
                     basin_length = self._Jmin + np.zeros(int(self._ny)).astype(float)
                 else:
                     # KA: there might be a more sophisticated way to replicate
@@ -890,7 +890,7 @@ class Brie:
                             np.array(([-self._ny, 0, self._ny]))
                             + np.reshape(
                                 self._inlet_idx_mat + 1,
-                                (np.size(self._inlet_idx_mat), 1),
+                                (len(self._inlet_idx_mat), 1),
                             )
                         ).T
                     )
@@ -931,7 +931,7 @@ class Brie:
                 )  # KA: not sure if I need the np.array here
 
             # get rid of duplicates and neighbours
-            if np.size(self._inlet_idx) != 0:
+            if len(self._inlet_idx) != 0:
                 # KA: inlet_idx_mat is just inlet_idx concatenated into a single
                 # array and made a float so we can use NaNs
                 self._inlet_idx_mat = np.hstack(self._inlet_idx).astype(float)
@@ -956,7 +956,7 @@ class Brie:
 
             # do "fluid mechanics" of inlets (KA: I see no need for the second
             # "if" statement, but leave as is )
-            if np.size(self._inlet_idx) != 0:
+            if len(self._inlet_idx) != 0:
                 # sort inlets (first index only) and find respective tidal prisms
                 inlet_all_idx = np.sort(self._inlet_idx)
                 inlet_all_idx_idx = np.argsort(self._inlet_idx)
@@ -1035,16 +1035,16 @@ class Brie:
 
             # KA: python object arrays to "mimic" Matlab cells for inlet tracking
             # in retrospect, probably didn't need objects. Empty list would have been fine.
-            inlet_nex = np.empty(np.size(self._inlet_idx), dtype=object)
-            inlet_prv = np.empty(np.size(self._inlet_idx), dtype=object)
+            inlet_nex = np.empty(len(self._inlet_idx), dtype=object)
+            inlet_prv = np.empty(len(self._inlet_idx), dtype=object)
 
             # preallocate arrays for inlet migration and fractions based on I
             migr_up, delta, beta, beta_r, alpha, alpha_r, delta_r, Qs_in = [
-                np.zeros(np.size(self._inlet_idx)).astype(float) for _ in range(8)
+                np.zeros(len(self._inlet_idx)).astype(float) for _ in range(8)
             ]
 
             # inlet morphodynamics per inlet (KA: again, j-1 here for python)
-            for j in np.arange(1, np.size(self._inlet_idx) + 1):
+            for j in np.arange(1, len(self._inlet_idx) + 1):
 
                 # breach sediment is added to the flood-tidal delta
                 if (
@@ -1245,7 +1245,7 @@ class Brie:
                     np.fix(self._time_index / self._dtsave).astype(int) - 1
                 ] = np.mean(migr_up / self._dt)
 
-                if np.size(self._inlet_idx) != 0:
+                if len(self._inlet_idx) != 0:
                     self._inlet_Qs_in[
                         np.fix(self._time_index / self._dtsave).astype(int) - 1
                     ] = np.mean(Qs_in)
