@@ -78,18 +78,18 @@ ashton = ashton_gen(a=0.0, b=1.0, name="ashton")
 
 
 class WaveAngleGenerator:
+    # def __init__(self, asymmetry=0.8, high_fraction=0.2, wave_climl=180, rng=None):
     def __init__(self, asymmetry=0.8, high_fraction=0.2, rng=None):
-        # def __init__(self, asymmetry=0.8, high_fraction=0.2, wave_climl=180, rng=None):
         """Generate incoming wave angles.
 
         Parameters
         ----------
         asymmetry: float, optional
-            Fraction of waves approaching from the left, looking offshore (Ashton & Murray, 2006). Value typically
-            varied in BRIE.
+            Fraction of waves approaching from the left, looking offshore (Ashton &
+            Murray, 2006). Value typically varied in BRIE.
         high_fraction: float, optional
-            Fraction of waves approaching at angles higher than 45 degrees from shore normal (Ashton & Murray, 2006).
-            Value typically 0.2 in BRIE.
+            Fraction of waves approaching at angles higher than 45 degrees from shore
+            normal (Ashton & Murray, 2006). Value typically 0.2 in BRIE.
 
         Examples
         --------
@@ -173,7 +173,8 @@ class WaveAngleGenerator:
         Returns
         -------
         ndarray of float
-            This is the normalized angular distribution of wave energy (Eq 39 in BRIE, from AM06).
+            This is the normalized angular distribution of wave energy (Eq 39 in BRIE,
+            from AM06).
         """
         return self._wave_pdf(angle)
 
@@ -188,7 +189,8 @@ class WaveAngleGenerator:
         Returns
         -------
         ndarray of float
-            This is the normalized cumulative distribution of wave energy (Eq 25 in BRIE, from AM06).
+            This is the normalized cumulative distribution of wave energy (Eq 25 in
+            BRIE, from AM06).
         """
         return self._wave_cdf(angle)
 
@@ -206,7 +208,8 @@ class WaveAngleGenerator:
             Waves angles [radians].
         """
 
-        # I don't want to extrapolate, so instead if the rng is below the interpolation bounds, I pick a new number
+        # I don't want to extrapolate, so instead if the rng is below the
+        # interpolation bounds, I pick a new number
         # x = self._rng.random(samples)
 
         # while x < self._lower_bnd:

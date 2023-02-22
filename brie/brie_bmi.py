@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from typing import Tuple
 
 import numpy
@@ -514,8 +513,8 @@ class BrieBMI(Bmi):
         var = self._var[name]
         try:
             return var["grid"]
-        except KeyError:
-            raise NotImplementedError(f"get_var_grid({name})")
+        except KeyError as err:
+            raise NotImplementedError(f"get_var_grid({name})") from err
 
     def get_var_itemsize(self, name: str) -> int:
         """Get memory use for each array element in bytes.

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Created on Fri Apr  3 17:53:45 2020
 
@@ -10,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.io import loadmat
 
-#%%
+# %%
 ###############################################################################
 # load stuff
 ###############################################################################
@@ -22,7 +21,7 @@ output = output["output"]
 # matlab structures
 mat = loadmat("CASCADE_comparison.mat")
 
-#%%
+# %%
 ###############################################################################
 # iterate through both outputs and get overwash and inlet flux
 ###############################################################################
@@ -48,14 +47,13 @@ inputs_p2 = range(np.size(param2))
     nt,
     dy_mat,
     dt_mat,
-) = [np.zeros((np.size(param1), np.size(param2))) for _ in range(11)]
+) = (np.zeros((np.size(param1), np.size(param2))) for _ in range(11))
 
 # normalize transgressive sediment flux?
 bnorm = False  # buggy
 
 for ii in inputs_p1:
     for jj in inputs_p2:
-
         # matrix format is dt (row) x dy (column)
         model_out = output[ii, jj]
         dy[ii, jj] = model_out._dy  # for debugging
@@ -111,7 +109,9 @@ for ii in inputs_p1:
         # INLET AGE and # of inlets active through time
 #        fig, axs = plt.subplots(2, 2)
 #
-#        t = np.arange(dt[ii,jj],(dt[ii,jj]*nt[ii,jj])+dt[ii,jj],model_out._dtsave*dt[ii,jj])  # time array
+#        t = np.arange(
+#           dt[ii,jj],(dt[ii,jj]*nt[ii,jj])+dt[ii,jj],model_out._dtsave*dt[ii,jj]
+#        )  # time array
 #        ax = axs[0,0]
 #        ax.scatter(t, inlet_nr)
 #        ax.set_title('python - inlet_nr')
@@ -132,7 +132,7 @@ for ii in inputs_p1:
 # Qinlet_total = Qinlet_total/dy
 # Qinlet_mat_total = Qinlet_mat_total/dy
 #
-#%%
+# %%
 ###############################################################################
 # plot - original testing of transpose and normalization
 ###############################################################################
@@ -239,7 +239,7 @@ ax.set_ylabel("dy (m)")
 fig.tight_layout()
 plt.show()
 
-#%%
+# %%
 ###############################################################################
 # plot - no transpose
 ###############################################################################
@@ -333,7 +333,7 @@ ax.set_xticklabels(param2)
 ax.set_yticklabels(param1)  # dt
 ax.set_xlabel("dy (m)")
 
-#%%
+# %%
 ###############################################################################
 # plot - no normalization, no transpose
 ###############################################################################
@@ -417,7 +417,7 @@ ax.set_xlabel("dy (m)")
 # fig.tight_layout()
 # plt.show()
 
-#%%
+# %%
 ###############################################################################
 # plot - historgram of F
 ###############################################################################

@@ -90,7 +90,6 @@ def test_ashton_cdf_radians():
 
 
 def test_waves_min_and_max():
-
     waves = WaveAngleGenerator()
     angles = waves.next(10000)
     assert np.all(angles >= -np.pi / 2.0)
@@ -156,13 +155,13 @@ def test_cdf():
 
 
 def test_ashton_vs_WaveAngleGenerator():
-
     # i.e., they are only equal if you don't include the boundaries
     angle_array, step = np.linspace(
         -89.5, 89.5, 180, retstep=True
     )  # gives one point per degree
     # angle_array, step = np.linspace(-90.0, 90.0, 5, retstep=True)
-    # angle_array, step = np.linspace(-90.0, 90.0, 181, retstep=True) # need 181 for one point per degree
+    # need 181 for one point per degree
+    # angle_array, step = np.linspace(-90.0, 90.0, 181, retstep=True)
 
     dist = ashton(a=0.8, h=0.2, loc=-90, scale=180)
     ashton_pdf = dist.pdf(angle_array) * step
