@@ -1,5 +1,3 @@
-
-
 ============
 Contributing
 ============
@@ -70,8 +68,6 @@ Ready to contribute? Here's how to set up *brie* for local development.
     $ conda create -n brie python
     $ conda activate brie
     $ cd brie/
-    $ conda install --file=requirements.txt
-
     $ pip install -e .
 
 4. Create a branch for local development::
@@ -80,21 +76,30 @@ Ready to contribute? Here's how to set up *brie* for local development.
 
    Now you can make your changes locally.
 
-5. When you're done making changes, check that your changes pass flake8 and the
+5. We use `nox`_ to automate routine maintenance tasks like running the tests,
+   removing lint, etc. Install `nox`_ with *pip*::
+
+    $ pip install nox
+
+6. When you're done making changes, you can now run *nox* to check that the tests
+   pass and that there isn't any lint::
+   pass and check that your changes pass flake8 and the
    tests::
 
-    $ flake8 brie
-    $ pytest
+    $ nox -s test  # run test unit tests
+    $ nox -s test-notebooks  # test that the notebooks successfully
+    $ nox -s test-bmi  # test the bmi
+    $ nox -s lint  # find and, where possible, remove lint (black, flake8, etc.)
 
-   To get flake8, just conda install it into your environment.
-
-6. Commit your changes and push your branch to GitHub::
+7. Commit your changes and push your branch to GitHub::
 
     $ git add .
     $ git commit -m "Your detailed description of your changes."
     $ git push origin name-of-your-bugfix-or-feature
 
-7. Submit a pull request through the GitHub website.
+8. Submit a pull request through the GitHub website.
+
+.. _nox:: https://nox.thea.codes/
 
 Pull Request Guidelines
 -----------------------
@@ -105,9 +110,8 @@ Before you submit a pull request, check that it meets these guidelines:
 2. If the pull request adds functionality, the docs should be updated. Put
    your new functionality into a function with a docstring, and add the
    feature to the list in *README.rst*.
-3. The pull request should work for Python 3.7 and higher. Check
-   https://travis-ci.com/UNC-CECL/brie/pull_requests
-   and make sure that the tests pass for all supported Python versions.
+3. The pull request should work for Python 3.8 and higher. Check
+   the tests pass for all supported Python versions.
 4. Update *CHANGES.tst* with a brief description of what you pull request
    adds, fixes, etc.
 
@@ -118,7 +122,4 @@ A reminder for the maintainers on how to deploy.
 Make sure all your changes are committed (including an entry in *CHANGES.rst*).
 Then run::
 
-    $ fullrelease
-
-If this command isn't found, you will need to install *zest.releaser*, which
-can be done with `pip install zest.releaser[recommended]`.
+    $ nox -s release
