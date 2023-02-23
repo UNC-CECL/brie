@@ -39,7 +39,7 @@ def calc_alongshore_transport_k(
     rho_water=1050.0,
     gamma_b=0.78,
 ):
-    r"""Calculate alongshore transport diffusion coefficient.
+    """Calculate alongshore transport diffusion coefficient.
 
     The diffusion coefficient is calculated from Nienhuis, Ashton, Giosan, 2015 [1]_ .
     Note that the Ashton, 2006 value for *k* is incorrect.
@@ -64,18 +64,18 @@ def calc_alongshore_transport_k(
     Notes
     -----
 
-    The sediment transport constant, :math:`K_1`, is calculated as follows,
+    The sediment transport constant, ``K_1``, is calculated as follows::
 
-    .. math::
+        K_1 = (
+            5.3e-6
+            * K
+            * (1 / (2 * n)) ** (6 / 5)
+            * (sqrt(g * gamma_b) / (2 * pi)) ** (1 / 5)
+        )
 
-        K_1 = 5.3 \cdot 10^{-6} K \left( \frac{1}{2n} \right)^{6 \over 5} \left( \frac{\sqrt{g \gamma_b}} {2 \pi} \right)^{1 \over 5}
+    where::
 
-    where:
-
-    .. math::
-
-        K = 0.46 \rho g^{3 \over 2}
-
+        K = 0.46 * rho_g ** (3 / 2)
     """
     return (
         5.3e-6
@@ -138,7 +138,7 @@ def calc_shoreline_angles(y, spacing=1.0, out=None):
 
 
 def calc_coast_qs(wave_angle, wave_height=1.0, wave_period=10.0):
-    r"""Calculate coastal alongshore sediment transport for a given incoming wave angle.
+    """Calculate coastal alongshore sediment transport for a given incoming wave angle.
 
     Parameters
     ----------
@@ -163,14 +163,18 @@ def calc_coast_qs(wave_angle, wave_height=1.0, wave_period=10.0):
     Alongshore sediment transport is computed using the CERC or Komar
     (Komar, 1998 [2]_ ) formula, reformulated into deep-water wave properties
     (Ashton and Murray, 2006 [3]_ ) by back-refracting the waves over shore-parallel
-    contours, which yields:
+    contours, which yields::
 
-    .. math::
+        Q_s = (
+            K_1
+            * H_w ** (12 / 5)
+            * T ** (1 / 5)
+            * cos(d_theta) ** (6 / 5)
+            * sin(d_theta)
+        )
 
-        Q_s = K_1 \cdot H_s^{12/5} T^{1/5} \cos^{6/5}\left( \Delta \theta \right) \sin \left(\Delta \theta\right)
-
-    where :math:`H_s` is the offshore deep-water significant wave height (in meters),
-    :math:`T` is the wave period (in seconds), and :math:`\Delta \theta` is the
+    where ``H_s`` is the offshore deep-water significant wave height (in meters),
+    ``T`` is the wave period (in seconds), and ``d_theta`` is the
     deep-water wave approach angle relative to the local shoreline orientation (rads).
 
     References
@@ -236,14 +240,20 @@ def calc_coast_diffusivity(
     berm_ele=2.0,
     n_bins=181,
 ):
-    r"""Calculate sediment diffusion along a coastline. Corresponds to Equations 37-39 in NLT19 [1]_, with formulations from
-    AM06 [2]_.
+    """Calculate sediment diffusion along a coastline.
 
-    .. math::
+    Corresponds to Equations 37-39 in NLT19 [1]_, with formulations from AM06 [2]_::
 
-        D \left( \theta \right) = k/(H_b+D_T) \cdot H_0 ^{12/5} T^{1/5} \cdot [E \left( \phi_0 \right) * \psi \left( \phi_0 - \theta \right)]
+        D(theta) = (
+            k
+            / (H_b + D_T)
+            * H_0 ** (12 / 5)
+            * T ** (1 / 5)
+            * (E(phi_0) * psi(phi_0 - theta))
+        )
 
-    where :math:`E\left( \phi_0 \right)` is the normalized angular distribution of wave energy, and :math:`\psi \left( \phi_0 - \theta \right)` is the angle depdendence of diffusivity.
+    where ``E(phi_0)`` is the normalized angular distribution of wave energy, and
+    ``psi(phi_0 - theta)`` is the angle depdendence of diffusivity.
 
 
     References
