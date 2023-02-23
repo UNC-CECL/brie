@@ -83,13 +83,15 @@ Ready to contribute? Here's how to set up *brie* for local development.
 
 6. When you're done making changes, you can now run *nox* to check that the tests
    pass and that there isn't any lint::
-   pass and check that your changes pass flake8 and the
-   tests::
 
     $ nox -s test  # run test unit tests
     $ nox -s test-notebooks  # test that the notebooks successfully
     $ nox -s test-bmi  # test the bmi
     $ nox -s lint  # find and, where possible, remove lint (black, flake8, etc.)
+
+  To run all of the above in a single command::
+
+    $ nox
 
 7. Commit your changes and push your branch to GitHub::
 
@@ -99,7 +101,7 @@ Ready to contribute? Here's how to set up *brie* for local development.
 
 8. Submit a pull request through the GitHub website.
 
-.. _nox:: https://nox.thea.codes/
+.. _nox: https://nox.thea.codes/
 
 Pull Request Guidelines
 -----------------------
