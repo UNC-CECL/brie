@@ -1,25 +1,30 @@
 """Alongshore sediment transport
 
-This module provides functions for diffusing sediment along a straight (non-complex) coast.
-Formulations described in Nienhuis and Lorenzo-Trueba, 2019 [4]_ and stem from Ashton and Murray, 2006 [2]_,
-Nienhuis et al., 2015 [1]_, and Komar, 1998 [3]_.
+This module provides functions for diffusing sediment along a straight (non-complex)
+coast.  Formulations described in Nienhuis and Lorenzo-Trueba, 2019 [4]_ and stem
+from Ashton and Murray, 2006 [2]_, Nienhuis et al., 2015 [1]_, and Komar, 1998 [3]_.
 
 References
 ----------
 
-.. [1] Jaap H. Nienhuis, Andrew D. Ashton, Liviu Giosan; What makes a delta wave-dominated?.
-    Geology ; 43 (6): 511–514. doi: https://doi.org/10.1130/G36518.1
-.. [2] Andrew D. Ashton, A. Brad Murray. High‐angle wave instability and emergent shoreline shapes:
-    1. Modeling of sand waves, flying spits, and capes. Journal of Geophysical Research: Earth Surface 111.F4 (2006).
-.. [3] P.D. Komar, 1998, Beach processes and sedimentation: Upper Saddle River, New Jersey, Prentice Hall , 544 p.
-.. [4] Jaap H. Nienhuis, Jorge Lorenzo Trueba; Simulating barrier island response to sea level rise with the barrier
-    island and inlet environment (BRIE) model v1.0 ; Geosci. Model Dev., 12, 4013–4030, 2019; https://doi.org/10.5194/gmd-12-4013-2019
+.. [1] Jaap H. Nienhuis, Andrew D. Ashton, Liviu Giosan; What makes a delta
+       wave-dominated?.  Geology ; 43 (6): 511–514.
+       doi: https://doi.org/10.1130/G36518.1
+.. [2] Andrew D. Ashton, A. Brad Murray. High‐angle wave instability and emergent
+       shoreline shapes: 1. Modeling of sand waves, flying spits, and capes. Journal
+       of Geophysical Research: Earth Surface 111.F4 (2006).
+.. [3] P.D. Komar, 1998, Beach processes and sedimentation: Upper Saddle River,
+       New Jersey, Prentice Hall , 544 p.
+.. [4] Jaap H. Nienhuis, Jorge Lorenzo Trueba; Simulating barrier island response
+       to sea level rise with the barrier island and inlet environment (BRIE) model
+       v1.0 ; Geosci. Model Dev., 12, 4013–4030, 2019;
+       https://doi.org/10.5194/gmd-12-4013-2019
 
 
 Notes
 ---------
-All calculations are performed with the domain perspective of looking onshore to offshore
-
+All calculations are performed with the domain perspective of looking onshore to
+offshore
 """
 import numpy as np
 import scipy.constants
@@ -76,14 +81,14 @@ def calc_alongshore_transport_k(
         5.3e-6
         # * 0.46  # I'm not sure about this factor
         * rho_water
-        * gravity ** 1.5
+        * gravity**1.5
         * (1 / (2 * n)) ** 1.2
         * (np.sqrt(gravity * gamma_b) / (2 * np.pi)) ** 0.2
     )
 
 
 def calc_shoreline_angles(y, spacing=1.0, out=None):
-    r"""Calculate shoreline angles.
+    """Calculate shoreline angles.
 
     Given a series of coastline positions, `y`, with equal spacing
     of points, calculate coastline angles with the *x*-axis. Angles
@@ -155,23 +160,31 @@ def calc_coast_qs(wave_angle, wave_height=1.0, wave_period=10.0):
     Notes
     -----
 
-    Alongshore sediment transport is computed using the CERC or Komar (Komar, 1998 [2]_ ) formula, reformulated into deep-water wave properties (Ashton and Murray, 2006 [3]_ ) by back-refracting the waves over shore-parallel contours, which yields:
+    Alongshore sediment transport is computed using the CERC or Komar
+    (Komar, 1998 [2]_ ) formula, reformulated into deep-water wave properties
+    (Ashton and Murray, 2006 [3]_ ) by back-refracting the waves over shore-parallel
+    contours, which yields:
 
     .. math::
 
         Q_s = K_1 \cdot H_s^{12/5} T^{1/5} \cos^{6/5}\left( \Delta \theta \right) \sin \left(\Delta \theta\right)
 
-    where :math:`H_s` is the offshore deep-water significant wave height (in meters), :math:`T` is the wave period (in seconds), and :math:`\Delta \theta` is the deep-water wave approach angle relative to the local shoreline orientation (rads).
+    where :math:`H_s` is the offshore deep-water significant wave height (in meters),
+    :math:`T` is the wave period (in seconds), and :math:`\Delta \theta` is the
+    deep-water wave approach angle relative to the local shoreline orientation (rads).
 
     References
     ----------
-    .. [2] Komar P.D., 1998, Beach processes and sedimentation: Upper Saddle River, New Jersey, Prentice Hall , 544 p.
+    .. [2] Komar P.D., 1998, Beach processes and sedimentation: Upper Saddle River,
+           New Jersey, Prentice Hall , 544 p.
 
-    .. [3] Ashton A.D. Murray A.B., 2006, High-angle wave instability and emergent shoreline shapes: 1. Modeling of sand waves, flying spits, and capes: Journal of Geophysical Research , v. 111, F04011, doi:10.1029/2005JF000422.
+    .. [3] Ashton A.D. Murray A.B., 2006, High-angle wave instability and emergent
+           shoreline shapes: 1. Modeling of sand waves, flying spits, and capes:
+           Journal of Geophysical Research , v. 111, F04011, doi:10.1029/2005JF000422.
     """
     return (
-        wave_height ** 2.4
-        * (wave_period ** 0.2)
+        wave_height**2.4
+        * (wave_period**0.2)
         * SECONDS_PER_YEAR
         * AlongshoreTransporter.K
         * (np.cos(wave_angle) ** 1.2)
@@ -182,8 +195,9 @@ def calc_coast_qs(wave_angle, wave_height=1.0, wave_period=10.0):
 def calc_inlet_alongshore_transport(
     wave_angle, shoreline_angle=0.0, wave_height=1.0, wave_period=10.0
 ):
-    r"""Calculate alongshore transport along a coastline for a single wave angle. Only used in inlet calculations within
-    BRIE.
+    """Calculate alongshore transport along a coastline for a single wave angle.
+
+    Only used in inlet calculations within BRIE.
 
     Parameters
     ----------
@@ -234,10 +248,14 @@ def calc_coast_diffusivity(
 
     References
     ----------
-    .. [1] Jaap H. Nienhuis, Jorge Lorenzo Trueba; Simulating barrier island response to sea level rise with the barrier
-    island and inlet environment (BRIE) model v1.0 ; Geosci. Model Dev., 12, 4013–4030, 2019; https://doi.org/10.5194/gmd-12-4013-2019
+    .. [1] Jaap H. Nienhuis, Jorge Lorenzo Trueba; Simulating barrier island
+           response to sea level rise with the barrier island and inlet environment
+           (BRIE) model v1.0 ; Geosci. Model Dev., 12, 4013–4030, 2019;
+           https://doi.org/10.5194/gmd-12-4013-2019
 
-    .. [2] Ashton A.D. Murray A.B., 2006, High-angle wave instability and emergent shoreline shapes: 1. Modeling of sand waves, flying spits, and capes: Journal of Geophysical Research , v. 111, F04011, doi:10.1029/2005JF000422.
+    .. [2] Ashton A.D. Murray A.B., 2006, High-angle wave instability and emergent
+           shoreline shapes: 1. Modeling of sand waves, flying spits, and capes:
+           Journal of Geophysical Research , v. 111, F04011, doi:10.1029/2005JF000422.
 
 
     Parameters
@@ -254,9 +272,9 @@ def calc_coast_diffusivity(
     berm_ele: float, optional
         Berm elevation [m]
     n_bins: float, optional
-        The number of bins used for the wave resolution: if 181 and [-90,90] in angle array below,
-        the wave angles are in the middle of the bins,
-        symmetrical about zero, spaced by 1 degree
+        The number of bins used for the wave resolution: if 181 and [-90,90] in angle
+        array below, the wave angles are in the middle of the bins, symmetrical about
+        zero, spaced by 1 degree.
     """
 
     # all_angles, step = np.linspace(-89.5, 89.5, n_bins, retstep=True)
@@ -273,8 +291,8 @@ def calc_coast_diffusivity(
         -(
             AlongshoreTransporter.K
             / (berm_ele + d_sf)
-            * wave_height ** 2.4
-            * wave_period ** 0.2
+            * wave_height**2.4
+            * wave_period**0.2
         )
         * SECONDS_PER_YEAR
         # * (np.cos(delta_angles) ** 0.2)
@@ -283,23 +301,24 @@ def calc_coast_diffusivity(
         * (1.2 * np.sin(all_angles) ** 2 - np.cos(all_angles) ** 2)
     )
 
-    # we convolve the normalized angular distribution of wave energy with the (relative wave) angle dependence
-    # of the diffusivity
+    # we convolve the normalized angular distribution of wave energy with the
+    # (relative wave) angle dependence of the diffusivity
     # coast_diff = np.convolve(e_phi_0, diff_phi_0, mode="same")
     y = np.convolve(e_phi_0, diff_phi0_theta, mode="full")
 
-    # KA: the "same" method differs in Matlab and Numpy; here we pad and slice out the "same" equivalent
+    # KA: the "same" method differs in Matlab and Numpy; here we pad and slice out
+    # the "same" equivalent
     npad = len(diff_phi0_theta) - 1
     first = npad - npad // 2
-    coast_diff_phi0_theta = y[
-        first : first + len(e_phi_0)
-    ]  # this is D above, for all relative wave angles
+    # this is D above, for all relative wave angles
+    coast_diff_phi0_theta = y[first : first + len(e_phi_0)]
 
-    # KA: why minus shoreline angles? I think because coast_diff_phi0_theta assumes a straight coastline (theta = 0) and we need to
-    # evaluate at phi_0 - theta (i.e., the relative wave angle array for a non-straight shoreline)
-    coast_diff = np.interp(
-        -shoreline_angles, all_angles, coast_diff_phi0_theta
-    )  # this is D above, evaluated at theta
+    # KA: why minus shoreline angles? I think because coast_diff_phi0_theta assumes
+    # a straight coastline (theta = 0) and we need to evaluate at phi_0 - theta
+    # (i.e., the relative wave angle array for a non-straight shoreline)
+
+    # this is D above, evaluated at theta
+    coast_diff = np.interp(-shoreline_angles, all_angles, coast_diff_phi0_theta)
     # return np.interp(shoreline_angles, all_angles, y) * np.sign(-wave_angle)
     # return np.interp(-wave_angle, all_angles, y)  # * np.sign(-wave_angle)
 
@@ -361,7 +380,7 @@ def _build_matrix(
     dt=1.0,
     dx_dt=0,
 ):
-    r"""UPDATE THIS
+    """UPDATE THIS
 
     Parameters
     ----------
@@ -386,15 +405,17 @@ def _build_matrix(
     coast_diff, _ = calc_coast_diffusivity(
         wave_distribution.pdf,
         # np.pi / 2.0 - shoreline_angles, # Use shoreline angles???
-        # -shoreline_angles,  # Use shoreline angles??? # KA: I don't think this should be negative
+        # KA: I don't think this should be negative
+        # -shoreline_angles,  # Use shoreline angles???
         shoreline_angles,
         wave_height=wave_height,
         wave_period=wave_period,
     )
 
     # this is beta in Equation 41 of NLT19
-    # NOTE: Jaap updated on May 27, 2020 to force shoreline diffusivity to be greater than zero. Not sure I understand
-    # why diffusivity needs to be greater than zero (it doesn't have to be theoretically).
+    # NOTE: Jaap updated on May 27, 2020 to force shoreline diffusivity to be
+    # greater than zero. Not sure I understand why diffusivity needs to be greater
+    # than zero (it doesn't have to be theoretically).
     # r_ipl = np.clip(
     #     coast_diff
     #     * dt
@@ -403,7 +424,7 @@ def _build_matrix(
     #     a_max=None,
     # )
 
-    r_ipl = coast_diff * dt / (2.0 * dy ** 2)
+    r_ipl = coast_diff * dt / (2.0 * dy**2)
 
     mat = _build_tridiagonal_matrix(1.0 + 2.0 * r_ipl, lower=-r_ipl, upper=-r_ipl)
 
@@ -520,7 +541,6 @@ class AlongshoreTransporter:
     #     return mat.tocsc(), rhs
 
     def update(self):
-
         self._time += self._dt
 
         # self._wave_angle = self._wave_distribution.rvs(size=1)
@@ -535,7 +555,8 @@ class AlongshoreTransporter:
         #     * dt
         # )
 
-        # calculates diffusivity and then returns the tridiagonal matrix and right-hand-side of Equation 41 in NLT19
+        # calculates diffusivity and then returns the tridiagonal matrix and
+        # right-hand-side of Equation 41 in NLT19
         mat, rhs, _ = _build_matrix(
             self._shoreline_x,
             self._wave_distribution,

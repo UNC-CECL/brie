@@ -10,8 +10,8 @@ from brie.alongshore_transporter import (
     calc_alongshore_transport_k,
     calc_coast_diffusivity,
     calc_coast_qs,
-    calc_shoreline_angles,
     calc_inlet_alongshore_transport,
+    calc_shoreline_angles,
 )
 
 
@@ -23,8 +23,8 @@ def old_calc_shoreline_angles(x, spacing=1.0):
 
 def old_calc_coast_qs(wave_angle, wave_height=1.0, wave_period=10.0):
     return (
-        wave_height ** 2.4
-        * (wave_period ** 0.2)
+        wave_height**2.4
+        * (wave_period**0.2)
         * 3600
         * 365
         * 24
@@ -87,8 +87,8 @@ def old_calc_coast_diffusivity(
         -(
             calc_alongshore_transport_k()
             / (h_b_crit + d_sf)
-            * wave_height ** 2.4
-            * wave_period ** 0.2
+            * wave_height**2.4
+            * wave_period**0.2
         )
         * 365
         * 24
@@ -97,8 +97,11 @@ def old_calc_coast_diffusivity(
         * (1.2 * np.sin(angle_array) ** 2 - np.cos(angle_array) ** 2)
     )
 
-    # KA NOTE: the "same" method differs in Matlab and Numpy; here we pad and slice out the "same" equivalent
-    # conv = np.convolve(waves.pdf(np.deg2rad(angle_array)) * np.deg2rad(step), diff, mode="full")
+    # KA NOTE: the "same" method differs in Matlab and Numpy; here we pad and slice
+    # out the "same" equivalent
+    # conv = np.convolve(
+    #   waves.pdf(np.deg2rad(angle_array)) * np.deg2rad(step), diff, mode="full"
+    # )
     conv = np.convolve(wave_pdf(angle_array) * np.deg2rad(step), diff, mode="full")
     npad = len(diff) - 1
     first = npad - npad // 2
@@ -112,8 +115,10 @@ def old_calc_coast_diffusivity(
             # np.minimum(wave_climl, np.floor(89.5 - theta).astype(int)),
             np.minimum(wave_climl + 1, np.round(90 - theta).astype(int)),
         )
-    ]  # is this the relative wave angle? note that this indexing doesn't work with bounds other than [-90,90]
-    # so this coast_diff differs from the result of our interpolation in AlongshoreTransporter. It should work once we
+    ]
+    # is this the relative wave angle? note that this indexing doesn't work with
+    # bounds other than [-90,90] so this coast_diff differs from the result of our
+    # interpolation in AlongshoreTransporter. It should work once we
     # implement the Ashton distribution
 
     return coast_diff, coast_diff_phi0_theta
@@ -122,7 +127,6 @@ def old_calc_coast_diffusivity(
 def old_build_matrix(
     x_s, wave_distribution, dy=1.0, wave_height=1.0, wave_period=10.0, dt=1.0, x_s_dt=0
 ):
-
     wave_climl = 180
     ny = len(x_s)
     h_b_crit = 2.0
@@ -160,8 +164,8 @@ def old_build_matrix(
         -(
             calc_alongshore_transport_k()
             / (h_b_crit + d_sf)
-            * wave_height ** 2.4
-            * wave_period ** 0.2
+            * wave_height**2.4
+            * wave_period**0.2
         )
         * 365
         * 24
@@ -170,7 +174,8 @@ def old_build_matrix(
         * (1.2 * np.sin(angle_array) ** 2 - np.cos(angle_array) ** 2)
     )
 
-    # KA NOTE: the "same" method differs in Matlab and Numpy; here we pad and slice out the "same" equivalent
+    # KA NOTE: the "same" method differs in Matlab and Numpy; here we pad and slice
+    # out the "same" equivalent
     conv = np.convolve(
         wave_distribution.pdf(angle_array) * np.deg2rad(step), diff, mode="full"
     )
@@ -190,7 +195,7 @@ def old_build_matrix(
             ]
             * dt
             / 2
-            / dy ** 2
+            / dy**2
         ),
     )
 
@@ -409,7 +414,9 @@ def test_alongshore_transport_to_the_left(func):
 def test_alongshore_transport_to_the_right(func):
     angles = np.random.uniform(low=-np.pi / 2.0, high=0.0, size=50)
     assert np.all(func(0.0, shoreline_angle=angles) >= 0.0)
-    # assert np.all(calc_alongshore_transport(np.pi / 2.0, shoreline_angle=angles) > 0.0)
+    # assert np.all(
+    #   calc_alongshore_transport(np.pi / 2.0, shoreline_angle=angles) > 0.0
+    # )
 
 
 @pytest.mark.parametrize(

@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Created on Tue Mar 31 17:21:49 2020
 
 @author: KatherineAnardeWheels
 
-- imports matlab inputs for seeding of brie.py (grid testing, CSDMS platform), 
+- imports matlab inputs for seeding of brie.py (grid testing, CSDMS platform),
   written in parallel using the package joblib
 
 """
@@ -17,7 +16,7 @@ from scipy.io import loadmat
 
 from brie import Brie
 
-#%%
+# %%
 ###############################################################################
 # guts
 ###############################################################################
@@ -36,7 +35,6 @@ mat = loadmat("matlab_grid_testing_inlets_off_V7pt1.mat")
 
 
 def batchBrie(ii, jj, param1, param2, param, name, mat):
-
     # get matlab seed parameters
     xs = [mat["output"][ii][jj]["xs"].flat[0]]
     xs = np.r_[xs[0]].flatten()  # this is a numpy array - make sure that's ok
@@ -68,7 +66,7 @@ def batchBrie(ii, jj, param1, param2, param, name, mat):
     print(param[1], "=", param2[jj])
 
     # run the brie model
-    for time_step in range(int(model._nt) - 1):
+    for _ in range(int(model._nt) - 1):
         Brie.update(model)  # update the model by a time step
 
     # finalize by deleting variables
@@ -77,7 +75,7 @@ def batchBrie(ii, jj, param1, param2, param, name, mat):
     return model
 
 
-#%%
+# %%
 ###############################################################################
 # run model
 ###############################################################################
@@ -93,7 +91,7 @@ results = Parallel(n_jobs=num_cores)(
     for jj in inputs_p2
 )
 
-#%%
+# %%
 ###############################################################################
 # save output
 ###############################################################################
