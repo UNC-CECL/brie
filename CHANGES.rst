@@ -1,8 +1,8 @@
 Changelog for brie
 ==================
 
-1.0.0b1 (unreleased)
---------------------
+1.0.0 (2023-02-28)
+------------------
 
 - Nothing changed yet.
 
