@@ -4,7 +4,6 @@ import shutil
 
 import nox
 
-PROJECT = "brie"
 ROOT = pathlib.Path(__file__).parent
 
 
@@ -21,7 +20,7 @@ def test(session: nox.Session) -> None:
         "-n",
         "auto",
         "--cov",
-        PROJECT,
+        "brie",
         "-vvv",
     ] + session.posargs
 
@@ -98,6 +97,7 @@ def release(session):
 @nox.session(name="publish-testpypi")
 def publish_testpypi(session):
     """Publish wheelhouse/* to TestPyPI."""
+    session.install("twine")
     session.run("twine", "check", "build/wheelhouse/*")
     session.run(
         "twine",
@@ -112,6 +112,7 @@ def publish_testpypi(session):
 @nox.session(name="publish-pypi")
 def publish_pypi(session):
     """Publish wheelhouse/* to PyPI."""
+    session.install("twine")
     session.run("twine", "check", "build/wheelhouse/*")
     session.run(
         "twine",
@@ -124,15 +125,27 @@ def publish_pypi(session):
 @nox.session(python=False)
 def clean(session):
     """Remove all .venv's, build files and caches in the directory."""
+    root_folders = (
+        [
+            "baked_brie.egg-info",
+            ".pytest_cache",
+            ".venv",
+            "build",
+            "build/wheelhouse",
+        ]
+        if not session.posargs
+        else []
+    )
+
+    with session.chdir(ROOT):
+        for folder in root_folders:
+            session.log(f"rm -r {folder}")
+            shutil.rmtree(folder, ignore_errors=True)
+
     for folder in _args_to_folders(session.posargs):
         with session.chdir(folder):
-            shutil.rmtree("build", ignore_errors=True)
-            shutil.rmtree("build/wheelhouse", ignore_errors=True)
-            shutil.rmtree(f"{PROJECT}.egg-info", ignore_errors=True)
-            shutil.rmtree(".pytest_cache", ignore_errors=True)
-            shutil.rmtree(".venv", ignore_errors=True)
-
             for pattern in ["*.py[co]", "__pycache__"]:
+                session.log(f"rm {pattern}")
                 _clean_rglob(pattern)
 
 

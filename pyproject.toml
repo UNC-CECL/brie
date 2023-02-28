@@ -2,7 +2,7 @@
 requires = ["setuptools"]
 
 [project]
-name = "brie"
+name = "baked-brie"
 description = "The Barrier Inlet Environment (BRIE) Model"
 authors = [
     {name = "Katherine Anarde"},
