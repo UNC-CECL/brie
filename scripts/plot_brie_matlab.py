@@ -56,7 +56,7 @@ def batchBrie(ii, jj, dt, dy, name, mat):
     print("model timesteps for 1000 morphologic years = ", int(brie._nt))
 
     # run the brie model
-    for time_step in range(int(brie._nt) - 1):
+    for _ in range(int(brie._nt) - 1):
         brie.update()  # update the model by a time step
 
     # finalize by deleting variables and make Qinlet m^3/yr
@@ -101,18 +101,18 @@ np.savez(filename, output=output)
     nt_py,
     dy_mat,
     dt_mat,
-) = [np.zeros((np.size(dt), np.size(dy))) for _ in range(11)]
+) = (np.zeros((np.size(dt), np.size(dy))) for _ in range(11))
 
 for ii in inputs_dt:
     for jj in inputs_dy:
-
         # matrix format is dt (row) x dy (column)
         brie = output[ii, jj]
         dy_py[ii, jj] = brie._dy  # for debugging
         dt_py[ii, jj] = brie._dt
         nt_py[ii, jj] = np.size(brie._Qoverwash)
 
-        # find the mean of Qoverwash and Qinlet for calculation of F (see Jaap's Figure 9)
+        # find the mean of Qoverwash and Qinlet for calculation of F (see Jaap's
+        # Figure 9)
         Qoverwash_total_py[ii, jj] = np.mean(brie._Qoverwash)
         Qinlet_total_py[ii, jj] = np.mean(brie._Qinlet)
         F_py[ii, jj] = Qinlet_total_py[ii, jj] / (
@@ -243,10 +243,11 @@ ax.set_yticklabels(dt)  # dt
 ax.set_xlabel("dy (m)")
 
 # debugging the new inlet modifications from Jaap
-# I think the differences in the indices inlet_idx (for the same shoreline and wave angle) between the matlab and python
-# models come from rounding errors on x_s when imported into python (not enough precision), but this should be examined
-# further as a rewrite the inlet model for Barrier3D (i.e., the inlet dynamics appear to be working properly (see
-# comparison of inlet_age in plot_brie_colorgrid.py)
+# I think the differences in the indices inlet_idx (for the same shoreline and
+# wave angle) between the matlab and python models come from rounding errors on
+# x_s when imported into python (not enough precision), but this should be examined
+# further as a rewrite the inlet model for Barrier3D (i.e., the inlet dynamics appear
+# to be working properly (see comparison of inlet_age in plot_brie_colorgrid.py)
 
 # from scipy.io import loadmat
 # from brie import Brie
@@ -272,5 +273,6 @@ ax.set_xlabel("dy (m)")
 # for time_step in range(int(model._nt) - 1):
 #     Brie.update(model)
 #
-# plt.plot(model._Qinlet * model._dt / (model._dy * model._ny) ) # Qinlet is in m3/yr --> m3/m/yr
+# Qinlet is in m3/yr --> m3/m/yr
+# plt.plot(model._Qinlet * model._dt / (model._dy * model._ny))
 # plt.plot(model._Qoverwash / (model._dy * model._ny) )

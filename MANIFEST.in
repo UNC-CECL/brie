@@ -1,5 +1,13 @@
-include requirements.txt
-include LICENSE.rst
-include README.rst
+include .pre-commit-config.yaml
 include AUTHORS.rst
 include CHANGES.rst
+include CONTRIBUTING.rst
+include LICENSE.rst
+include README.rst
+include noxfile.py
+include requirements*.txt
+
+recursive-include tests *mat *py *yaml
+recursive-include scripts *py
+
+recursive-exclude notebooks *
