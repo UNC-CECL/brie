@@ -5,7 +5,7 @@ Created on Tue Mar 31 17:21:49 2020
 
 @author: KatherineAnardeWheels
 
-- imports matlab inputs for seeding of brie.py (grid testing, CSDMS platform), 
+- imports matlab inputs for seeding of brie_org.py (grid testing, CSDMS platform),
   written in parallel using the package joblib
 
 """
@@ -15,7 +15,7 @@ import numpy as np
 from joblib import Parallel, delayed
 from scipy.io import loadmat
 
-from brie.lexi_brie import Brie
+from brie.brie import Brie
 
 #%%
 ###############################################################################

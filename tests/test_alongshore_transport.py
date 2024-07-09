@@ -443,7 +443,7 @@ def test_coast_diff_uniform_always_positive(func, angle):
     assert qs > 0.0
 
 
-@pytest.mark.parametrize("func", (calc_coast_diffusivity, old_calc_coast_diffusivity))
+@pytest.mark.parametrize("func", (calc_coast_diffusivity, old_calc_coast_diffusivity)) #comparison failed here, Roya
 def test_coast_diff_symmetrical(func):
     dist = scipy.stats.uniform(loc=-np.pi / 2.0, scale=np.pi)
     angles = np.random.uniform(low=-np.pi / 2.0, high=np.pi / 2.0, size=500)
@@ -518,13 +518,15 @@ def test_tridiag_old_and_new():
     )
 
 
-def test_build_matrices_old_and_new():
+def test_build_matrices_old_and_new(): # failed here, Roya
     x_s = np.zeros(13)
     x_s[-1] = 1.0
     wave_distribution = scipy.stats.uniform(loc=-np.pi / 2.0, scale=np.pi)
     expected_mat, expected_rhs, expected_v = old_build_matrix(x_s, wave_distribution)
-    actual_mat, actual_rhs, actual_v = _build_matrix(x_s, wave_distribution)
 
-    assert_array_almost_equal(expected_v, actual_v)
-    assert_array_almost_equal(expected_rhs, actual_rhs)
-    assert_array_almost_equal(expected_mat.toarray(), actual_mat.toarray())
+    shoreline_angles = calc_shoreline_angles(x_s, spacing= 1.0)
+    actual_mat, actual_rhs, actual_v, _= _build_matrix(shoreline_angles, x_s, wave_distribution)
+
+    assert_array_almost_equal(expected_v, actual_v, decimal=6)
+    assert_array_almost_equal(expected_rhs, actual_rhs, decimal=6)
+    assert_array_almost_equal(expected_mat.toarray(), actual_mat.toarray(), decimal=6)

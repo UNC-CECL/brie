@@ -4,7 +4,7 @@ import scipy.constants
 g = scipy.constants.g
 from numpy.testing import assert_array_almost_equal
 
-from brie.lexi_inlet_spinner import (
+from brie.inlet_spinner import (
     organize_inlet,
     fluid_mechanics,
     inlet_morphodynamics,

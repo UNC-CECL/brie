@@ -261,12 +261,13 @@ def calc_coast_diffusivity(
 
     # all_angles, step = np.linspace(-89.5, 89.5, n_bins, retstep=True)
     # all_angles = np.deg2rad(all_angles)
-    all_angles, step = np.linspace(-np.pi / 2.0, np.pi / 2.0, n_bins, retstep=True)  # same
+    all_angles, step = np.linspace(-90, 90, n_bins+1, retstep=True)  # same
+    all_angles = np.deg2rad(all_angles)
 
     d_sf = 8.9 * wave_height
 
     # e_phi_0 = wave_pdf(all_angles) * np.deg2rad(step)
-    e_phi_0 = wave_pdf(all_angles) * step  # same as wave_pdf in master except its not
+    e_phi_0 = wave_pdf(all_angles) * np.deg2rad(step)  # same as wave_pdf in master except its not
     # stems from wave_pdf function not matching
     # wave_pdf is wave_distribution.pdf
     # wave_distribution comes from lexi_brie as wave_dist
@@ -389,7 +390,7 @@ def _build_matrix(
         Alongshore transport along the shoreline.
     """
 
-    # shoreline_angles = calc_shoreline_angles(shoreline_x, spacing=dy)
+    #shoreline_angles = calc_shoreline_angles(shoreline_x, spacing=dy)
 
     coast_diff, _ = calc_coast_diffusivity(
         wave_distribution.pdf,

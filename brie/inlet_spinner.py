@@ -302,6 +302,7 @@ def organize_inlet(inlet_idx, ny):
     """
 
     # inlet_idx_mat is just inlet_idx concatenated into a single array and made a float so we can use NaNs
+    print(inlet_idx)
     inlet_idx_mat = np.hstack(inlet_idx).astype(float)
     inlet_all_idx = np.sort(inlet_idx_mat)
     inlet_all_idx_idx = np.argsort(inlet_idx_mat)
@@ -754,7 +755,7 @@ class InletSpinner:
 
     Examples
     --------
-    >>> from brie.lexi_inlet_spinner import InletSpinner
+    >>> from brie.inlet_spinner import InletSpinner
     >>> inlets = InletSpinner([0.0, 0.0, 1.0, 0.0, 0.0], [5.0, 5.0, 10.0, 5.0, 5.0])
     >>> inlets.update()
     """

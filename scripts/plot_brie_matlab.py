@@ -1,7 +1,7 @@
 """
 Written by K.Anarde
 
-- imports matlab inputs for seeding of brie.py (for version testing and grid testing)
+- imports matlab inputs for seeding of brie_org.py (for version testing and grid testing)
 
 """
 import os
@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.io import loadmat
 
-from brie.lexi_brie import Brie
+from brie.brie import Brie
 
 os.chdir(
     "/Users/Lexi/PycharmProjects/brie/tests/test_brie_matlab"

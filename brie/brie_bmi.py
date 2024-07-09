@@ -4,7 +4,7 @@ from typing import Tuple
 import numpy
 from bmipy import Bmi
 
-from .lexi_brie import Lexi_Brie
+from .brie import Brie
 
 
 class BrieBMI(Bmi):
@@ -655,7 +655,7 @@ class BrieBMI(Bmi):
         recommended. A template of a model's configuration file
         with placeholder values is used by the BMI.
         """
-        self._brie = Lexi_Brie.from_yaml(config_file)
+        self._brie = Brie.from_yaml(config_file)
 
         self._grid = {
             0: {
