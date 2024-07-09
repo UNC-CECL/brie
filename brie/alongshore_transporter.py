@@ -268,6 +268,7 @@ def calc_coast_diffusivity(
 
     # e_phi_0 = wave_pdf(all_angles) * np.deg2rad(step)
     e_phi_0 = wave_pdf(all_angles) * np.deg2rad(step)  # same as wave_pdf in master except its not
+    #Roya--here we needed to add "np.deg2rad"
     # stems from wave_pdf function not matching
     # wave_pdf is wave_distribution.pdf
     # wave_distribution comes from lexi_brie as wave_dist

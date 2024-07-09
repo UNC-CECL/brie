@@ -525,7 +525,8 @@ def test_build_matrices_old_and_new(): # failed here, Roya
     expected_mat, expected_rhs, expected_v = old_build_matrix(x_s, wave_distribution)
 
     shoreline_angles = calc_shoreline_angles(x_s, spacing= 1.0)
-    actual_mat, actual_rhs, actual_v, _= _build_matrix(shoreline_angles, x_s, wave_distribution)
+    actual_mat, actual_rhs, actual_v, _ = _build_matrix(shoreline_angles, x_s, wave_distribution) #here, one argument was missing which was shoreline_angle.
+    #also I had to add this (_) so we can see the output. the function needs 4 variables not 3.
 
     assert_array_almost_equal(expected_v, actual_v, decimal=6)
     assert_array_almost_equal(expected_rhs, actual_rhs, decimal=6)
