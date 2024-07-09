@@ -86,5 +86,5 @@ def test_brie_matlab(test_case, n_steps):
     assert len(brie._Qoverwash) == n_steps
     assert len(brie._Qinlet) == n_steps
 
-    assert actual_q_overwash_mean == pytest.approx(expected_q_overwash_mean, rel=0.2)
-    assert actual_inlet_mean == pytest.approx(expected_inlet_mean, rel=0.2)
+    assert actual_q_overwash_mean == pytest.approx(expected_q_overwash_mean, rel=0.1)
+    assert actual_inlet_mean == pytest.approx(expected_inlet_mean, rel=0.1)
