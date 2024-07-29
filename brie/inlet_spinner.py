@@ -697,7 +697,7 @@ def inlet_morphodynamics(
 
     # reset arrays
     new_inlet = np.array([])
-    return inlet_idx, migr_up, delta, beta, alpha, Qs_in, inlet_age, Qinlet, inlet_y
+    return inlet_idx, migr_up, delta, beta, alpha, Qs_in, inlet_age, Qinlet, inlet_y, x_b_fld_dt #added x_b_fld_dt to the return values of the funtion to update the variable in brie
 
 
 def inlet_statistics(
@@ -1048,7 +1048,7 @@ class InletSpinner:
                 self._man_n, self._d_b, self._marsh_cover, self._basin_width
             )  # do "fluid mechanics" of inlets
             # in paper they do sediment transport next, but I think it is okay to do it whenever
-            self._inlet_idx, migr_up, delta, beta, alpha, self._Qs_in, self._inlet_age, self._Qinlet, self._inlet_y = \
+            self._inlet_idx, migr_up, delta, beta, alpha, self._Qs_in, self._inlet_age, self._Qinlet, self._inlet_y, self._x_b_fld_dt = \
                 inlet_morphodynamics(
                     self._inlet_idx, self._new_inlet, self._time_index, wi_cell, self._ny, self._dy, self._x_b_fld_dt, w, # use time_index instead of time
                     self._q_s, self._h_b, di_eq, self._d_b, self._Qinlet, self._rho_w, ai_eq, wi_eq, self._wave_height,
