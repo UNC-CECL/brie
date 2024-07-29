@@ -261,13 +261,21 @@ def calc_coast_diffusivity(
 
     # all_angles, step = np.linspace(-89.5, 89.5, n_bins, retstep=True)
     # all_angles = np.deg2rad(all_angles)
-    all_angles, step = np.linspace(-90, 90, n_bins+1, retstep=True)  # same
+
+    all_angles, step = np.linspace(
+        -90.0, 90.0, 180, retstep=True
+    ) # Changed to match the original code, must be checked
+
+    # all_angles, step = np.linspace(-90, 90, n_bins+1, retstep=True)  # same
     all_angles = np.deg2rad(all_angles)
 
     d_sf = 8.9 * wave_height
 
     # e_phi_0 = wave_pdf(all_angles) * np.deg2rad(step)
     e_phi_0 = wave_pdf(all_angles) * np.deg2rad(step)  # same as wave_pdf in master except its not
+    e_phi_0[0] = 0 # e_phi_[0] was set to zero in origina repo
+    # e_phi_0 = np.concatenate(([0], e_phi_0)) shifting to right
+    # e_phi_0 = e_phi_0[0:-1] shifting to right
     #Roya--here we needed to add "np.deg2rad"
     # stems from wave_pdf function not matching
     # wave_pdf is wave_distribution.pdf
@@ -281,7 +289,7 @@ def calc_coast_diffusivity(
     diff_phi0_theta = (
         -(
             AlongshoreTransporter.K
-            / (berm_ele + d_sf)
+            / (1.9 + d_sf) #berm ele value was 2 but the org code used 1.9 value here, must be checked
             * wave_height ** 2.4
             * wave_period ** 0.2
         )
@@ -295,6 +303,7 @@ def calc_coast_diffusivity(
     # we convolve the normalized angular distribution of wave energy with the (relative wave) angle dependence
     # of the diffusivity
     # coast_diff = np.convolve(e_phi_0, diff_phi_0, mode="same")
+
     y = np.convolve(e_phi_0, diff_phi0_theta, mode="full")
 
     # KA: the "same" method differs in Matlab and Numpy; here we pad and slice out the "same" equivalent
@@ -306,9 +315,17 @@ def calc_coast_diffusivity(
 
     # KA: why minus shoreline angles? I think because coast_diff_phi0_theta assumes a straight coastline (theta = 0) and we need to
     # evaluate at phi_0 - theta (i.e., the relative wave angle array for a non-straight shoreline)
-    coast_diff = np.interp(
-        -shoreline_angles, all_angles, coast_diff_phi0_theta
-    )  # this is D above, evaluated at theta
+    coast_diff = coast_diff_phi0_theta[
+        np.maximum(
+            1,
+            np.minimum(
+                180, np.round(90 - shoreline_angles*180/np.pi).astype(int)
+            ),
+        )
+    ] # This was changed to match the original code.
+    # coast_diff = np.interp(
+    #     -shoreline_angles*180/np.pi, all_angles, coast_diff_phi0_theta
+    # )  # this is D above, evaluated at theta
     # return np.interp(shoreline_angles, all_angles, y) * np.sign(-wave_angle)
     # return np.interp(-wave_angle, all_angles, y)  # * np.sign(-wave_angle)
 
@@ -415,6 +432,7 @@ def _build_matrix(
 
     r_ipl = coast_diff * dt / (2.0 * dy ** 2)
 
+
     mat = _build_tridiagonal_matrix(1.0 + 2.0 * r_ipl, lower=-r_ipl, upper=-r_ipl)
 
     rhs = (
@@ -443,7 +461,7 @@ class AlongshoreTransporter:
     >>> transporter.update()
     """
 
-    K = calc_alongshore_transport_k()
+    K = calc_alongshore_transport_k(gravity=9.81)
 
     def __init__(
         self,
@@ -529,8 +547,13 @@ class AlongshoreTransporter:
     #
     #     return mat.tocsc(), rhs
 
-    def update(self):
-
+    def update(self, x_s_dt, x_s):
+        self._dx_dt = x_s_dt
+        # self._shoreline_x = x_s
+        # self._dy
+        # self._shoreline_angles = calc_shoreline_angles(
+        #     self._shoreline_x, spacing=self._dy
+        # )
         self._time += self._dt
 
         # lexi added:

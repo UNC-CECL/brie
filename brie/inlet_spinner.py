@@ -35,8 +35,8 @@ from .alongshore_transporter import calc_alongshore_transport_k, calc_shoreline_
 # WHY ARE THEY BOTH USED?
 
 SECONDS_PER_YEAR = 3600.0 * 24.0 * 365.0
-g = scipy.constants.g
-
+# g = scipy.constants.g
+g = 9.81 # used g=9.81 like original code for easier comparison between codes
 
 def inlet_fraction(a, b, c, d, I):
     """what are the inlet fractions"""
@@ -197,7 +197,7 @@ def calc_inlet_alongshore_transport(
     """
     wave_angle_wrt_shoreline = np.clip(
         # np.pi / 2.0 + shoreline_angle - wave_angle,
-        wave_angle - shoreline_angle,
+        np.deg2rad(wave_angle) - shoreline_angle, #converted wave angle to rad
         a_min=-np.pi / 2.0,
         a_max=np.pi / 2.0,
     )
@@ -234,7 +234,7 @@ def create_inlet(inlet_idx, ny, dy, barrier_volume, min_inlet_separation=10000):
     new_inlet = []
 
     # calculate basin length
-    if np.size(inlet_idx) == 0:
+    if len(inlet_idx) == 0: #used correct function to get size of the list
         # based on matlab version we want to get 1,000 (ny) instances of 10,000 (Jmin)
         basin_length = min_inlet_separation * np.ones(int(ny)).astype(float)
         # basin_length = min_inlet_separation + np.zeros(int(ny)).astype(float) # DOES NOT WORK IN PYTHON
@@ -277,8 +277,8 @@ def create_inlet(inlet_idx, ny, dy, barrier_volume, min_inlet_separation=10000):
         new_inlet = idx[new_inlet]
 
     # add new breach to list of inlets
-    # inlet_idx.append(np.array(new_inlet))  # KA: not sure if I need the np.array here
-    inlet_idx.append([new_inlet])  # LVB: changed to a list
+    inlet_idx.append(np.array(new_inlet))  # KA: not sure if I need the np.array here
+    # inlet_idx.append([new_inlet])  # LVB: changed to a list
     # inlet_idx.append(new_inlet)  # LVB: will test out with no list at all
 
     return inlet_idx, new_inlet
@@ -526,14 +526,14 @@ def inlet_morphodynamics(
                                             d_b[new_inlet]
                                         )
 
-            Qinlet[time] = Qinlet[
-                               time
+            Qinlet[time-1] = Qinlet[
+                               time-1
                            ] + (
                                    (h_b[new_inlet] + d_b[new_inlet])
                                    * w[new_inlet]
                                    * wi_cell[j - 1]
                                    * dy
-                           )
+                           ) # use the correct index for saving Qinlet
 
         # alongshore flux brought into inlet
 
@@ -553,7 +553,7 @@ def inlet_morphodynamics(
         # find momentum balance of inlet to determine sediment
         # distribution fractions
         Mt = rho_w * u_e * u_e * ai_eq[j - 1]
-        Mw = rho_w / 16 * g * wave_height ** 2 * wi_eq[j - 1]
+        Mw = rho_w / 16 * 9.81 * wave_height ** 2 * wi_eq[j - 1]
         I = Mt / Mw * wi_eq[j - 1] / w[inlet_idx[j - 1][0]]
         h_b[inlet_idx[j - 1]] = 0
 
@@ -666,8 +666,8 @@ def inlet_morphodynamics(
         inlet_y[inlet_idx[j - 1][0]] = migr_res
 
         # how much q flood tidal delta in total
-        Qinlet[time] = (
-                Qinlet[time] + inlet_sink
+        Qinlet[time-1] = (
+                Qinlet[time-1] + inlet_sink
         )  # m3 per time step
 
         # add inlet sink to shoreline change (updated May 27, 2020 so that shoreline change from inlet sink
@@ -692,7 +692,7 @@ def inlet_morphodynamics(
         #     [time_index - 1, inlet_idx[j - 1][0].astype("int32")]
         # )
         inlet_age.append(  # KA: shouldn't this be time_index-1?
-            [time, inlet_idx[j - 1].astype("int32")]
+            [time-1, inlet_idx[j - 1].astype("int32")]
         )
 
     # reset arrays
@@ -731,7 +731,7 @@ def inlet_statistics(
             np.fix(time / dtsave).astype(int) - 1
             ] = np.mean(migr_up / dt)
 
-        if np.size(inlet_idx) != 0:
+        if len(inlet_idx) != 0:
             inlet_Qs_in[
                 np.fix(time / dtsave).astype(int) - 1
                 ] = np.mean(Qs_in)
@@ -760,7 +760,7 @@ class InletSpinner:
     >>> inlets.update()
     """
 
-    K = calc_alongshore_transport_k()
+    K = calc_alongshore_transport_k(gravity=9.81)
 
     def __init__(
             self,
@@ -841,7 +841,7 @@ class InletSpinner:
         back_barrier_marsh_fraction: float, optional
             Percent of backbarrier covered by marsh and does not contribute to tidal prism.
         """
-
+        self._time_index = 1 #Added time index varriable to use instead of absolute time as on the original code
         self._x_s = shoreline_x  # LVB added
         self._x_b = bay_shoreline_x
         self._z = sea_level,
@@ -906,7 +906,7 @@ class InletSpinner:
             self._dt, (self._dt * self._nt) + self._dt, self._dt
         )  # time array, KA: note, if we can eliminate this variable, that would be great (i.e., we wouldn't need nt)
         # self._w = self._x_b - self._x_s  # barrier width
-        self._w = [a - b for a, b in zip(self._x_b, self._x_s)]
+        self._w = [a - b for a, b in zip(self._bay_shoreline_x, self._shoreline_x)] # changed x_b and x_s to correct variables that are updated in this Object
         # self._d_b = np.minimum(
         #     self._bb_depth.astype(int) * np.ones(np.size(self._x_b)),
         #     self._z - (self._s_background * self._x_b),
@@ -955,10 +955,12 @@ class InletSpinner:
 
         self._time = 0
 
-    def update(self):
-
+    def update(self, h_b, z): #updated value of h_b, and z were only updated in brie module and were not sent to this intel_spinner module.
+        self._h_b = h_b
+        self._z = z
         self._time += int(self._dt)
         self._time = int(self._time)
+        self._time_index += 1 # update time index at each iteration
 
         # if wave angle not given, pull from distribution
         if self._wave_angle is None:
@@ -968,28 +970,53 @@ class InletSpinner:
         calc_shoreline_angles(self._shoreline_x, self._dy, out=self._shoreline_angles)
 
         # sediment transport into inlets  KA: temporary placement until I figure out where this goes
-        self._q_s[:] = (
-                calc_inlet_alongshore_transport(
-                    self._wave_angle,
-                    shoreline_angle=self._shoreline_angles,
-                    wave_height=self._wave_height,
-                    wave_period=self._wave_period,
-                )
-                * self._dt
+        # self._q_s[:] = (
+        #         calc_inlet_alongshore_transport(
+        #             self._wave_angle,
+        #             shoreline_angle=self._shoreline_angles,
+        #             wave_height=self._wave_height,
+        #             wave_period=self._wave_period,
+        #         )
+        #         * self._dt
+        # )
+        tmp_all_angles, step = np.linspace(
+            -90.0, 90.0, 180, retstep=True
         )
+
+        # all_angles, step = np.linspace(-90, 90, n_bins+1, retstep=True)  # same
+        tmp_all_angles = np.deg2rad(tmp_all_angles)
+        _tmp_coast_qs = calc_coast_qs(tmp_all_angles, wave_height=self._wave_height, wave_period=self._wave_period)
+        self._q_s[:] = (
+            self._dt*
+            _tmp_coast_qs[
+                np.minimum(
+                    180,
+                    np.maximum(
+                        1,
+                        np.round(
+                            180
+                            - self._wave_angle
+                            - (180*self._shoreline_angles/np.pi)
+                            + 1
+                        ),
+                    ),
+                ).astype(int)
+                - 1
+                ]
+        ) # Match qs calculation to the original code for easier comparison
 
         # -------------------------------
 
-        self._x_b_fld_dt = np.zeros(self._ny)  # reset array of flood tidal deltas
+        self._x_b_fld_dt = np.zeros(int(self._ny))  # reset array of flood tidal deltas
 
-        w = self._x_b - self._shoreline_x  # barrier width
+        w = self._bay_shoreline_x - self._shoreline_x  # barrier width # used correct updated variable
         self._barrier_volume = (
                 w * (self._h_b + 2) * np.sign(np.minimum(w, self._h_b))
         )  # barrier volume = barrier width times height + estimated inlet depth (KA: is inlet depth 2 m?)
 
         # where there is currently an inlet, set the barrier volume at that location to infinity
         if (
-                np.size(self._inlet_idx) != 0
+                len(self._inlet_idx) != 0
         ):  # KA: inlet_idx is a list here with arrays of different sizes (from previous time loop)
             self._barrier_volume[np.hstack(self._inlet_idx)] = np.inf
             self._inlet_idx.append(
@@ -999,37 +1026,45 @@ class InletSpinner:
         # create a new inlet every # years, unless at max # inlets, or if boolean says to create inlet this year
         # this is different because we have replaced 10 with a variable for inlet frequency (which is 10)
         if (
-                np.mod(self._t[int(self._time)], self._inlet_storm_frequency)
+                np.mod(self._t[self._time_index - 1], self._inlet_storm_frequency) #use time index instead of time
                 < (self._dt / 2)
-                and np.size(self._inlet_idx) < self._inlet_max
+                and len(self._inlet_idx) < self._inlet_max
                 or self._create_inlet_now  # NOTE TO ERIC: there is probably a more elegant way to do this
         ):
             self._inlet_idx, self._new_inlet = create_inlet(
                 self._inlet_idx, self._ny, self._dy, self._barrier_volume
             )
-        if np.size(self._inlet_idx) != 0:
+
+            self._basin_width = np.maximum(0, self._z / self._s_background[0] - self.bay_shoreline_x) #new place for calculation of basin width at each iteration
+
+        # print(self._inlet_idx)
+        # print(self._new_inlet)
+        if len(self._inlet_idx) != 0:
             self._inlet_idx, self._inlet_idx_mat = organize_inlet(
                 self._inlet_idx, self._ny
             )  # get rid of duplicates and neighbours
             self._inlet_idx, self._inlet_idx_close_mat, wi_cell, di_eq, ai_eq, wi_eq = fluid_mechanics(
-                self._inlet_idx, self._inlet_idx_mat, self._ny, self._dy, self._omega0, self._w, self._a0,
+                self._inlet_idx, self._inlet_idx_mat, self._ny, self._dy, self._omega0, w, self._a0, #used correct updated variable "w" as input,
                 self._man_n, self._d_b, self._marsh_cover, self._basin_width
             )  # do "fluid mechanics" of inlets
             # in paper they do sediment transport next, but I think it is okay to do it whenever
             self._inlet_idx, migr_up, delta, beta, alpha, self._Qs_in, self._inlet_age, self._Qinlet, self._inlet_y = \
                 inlet_morphodynamics(
-                    self._inlet_idx, self._new_inlet, self._time, wi_cell, self._ny, self._dy, self._x_b_fld_dt, w,
+                    self._inlet_idx, self._new_inlet, self._time_index, wi_cell, self._ny, self._dy, self._x_b_fld_dt, w, # use time_index instead of time
                     self._q_s, self._h_b, di_eq, self._d_b, self._Qinlet, self._rho_w, ai_eq, wi_eq, self._wave_height,
                     self._x_b, self._x_s, self._x_s_dt, self._w_b_crit, self._omega0, self._inlet_y, self._inlet_age,
                     self._d_sf
                 )  # inlet morphodynamics
             self._inlet_nr, self._inlet_migr, self._inlet_Qs_in, self._inlet_alpha, self._inlet_beta, \
             self._inlet_delta, self._inlet_ai = inlet_statistics(
-                self._time, self._dtsave, self._inlet_nr, self._inlet_idx, self._inlet_migr, migr_up, delta,
+                self._time_index, self._dtsave, self._inlet_nr, self._inlet_idx, self._inlet_migr, migr_up, delta,
                 self._inlet_delta, beta, self._inlet_beta, alpha, self._inlet_alpha, self._Qs_in, self._inlet_Qs_in,
                 ai_eq, self._inlet_ai, self._dt
             )  # inlet statistics
-
+            self._new_inlet = np.array([]) #erase new inlets after each iterationm, check
+            # print("###")
+            # print(brie._Qoverwash.mean())
+            # print("###")
             # self._Qinlet = self._Qinlet / self._dt  # put into m3/yr
             # self._Qinlet_norm = (self._Qinlet / self._dy)  # put into m3/m/yr
 
@@ -1043,7 +1078,7 @@ class InletSpinner:
 
     @wave_angle.setter
     def wave_angle(self, new_val):
-        if np.abs(new_val) <= np.deg2rad(90):
+        if new_val < 0 or new_val > 180: # This comparison was comparing degrees with radian
             raise ValueError("wave angle must be between -pi/2 and pi/2")
         self._wave_angle = new_val
 

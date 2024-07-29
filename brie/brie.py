@@ -294,11 +294,8 @@ class Brie:
         ###############################################################################
         # inlet model dependent variables
         ###############################################################################
-
-        self._basin_width = np.maximum(0, self._z / self._s_background - self._x_b)
-        # moved from the inlet model on section of master BRIE to outside the inlet class
-        # but it is the same calculation for basin width
-
+        #The basin_width calculation is commented out and moved to the correct place to be updated at each iteration.
+        # self._basin_width = np.maximum(0, self._z / self._s_background - self._x_b)
         # initialize inlet module
         self._inlets = InletSpinner(
             self._x_s,
@@ -310,7 +307,7 @@ class Brie:
             barrier_width_critical=self._w_b_crit,
             number_time_steps=self._nt,
             save_spacing=self._dtsave,
-            basin_width=self._basin_width,
+            basin_width=np.maximum(0, self._z / self._s_background - self._x_b), #initial value of basin width given inline
             inlet_storm_frequency=10,
             barrier_height=self._h_b,
             alongshore_section_length=self._dy,
@@ -325,7 +322,9 @@ class Brie:
             lagoon_manning_n=self._man_n,
             back_barrier_marsh_fraction=self._marsh_cover,
         )
-
+        # self._basin_width = np.maximum(0, self._z / self._s_background - self._inlets.bay_shoreline_x)
+        # moved from the inlet model on section of master BRIE to outside the inlet class
+        # but it is the same calculation for basin width
         ###############################################################################
         # Alongshore sediment transport model dependent variables (added)
         ###############################################################################
@@ -608,7 +607,7 @@ class Brie:
             # update inlet model parameters prior to advancing one TS
             self._inlets.shoreline_x = self._x_s
             self._inlets.bay_shoreline_x = self._x_b
-            self._inlets.update()
+            self._inlets.update(self._h_b, self._z)
             self._Qinlet = self._inlets._Qinlet
 
 
@@ -629,7 +628,7 @@ class Brie:
             self._transporter.dx_dt = (
                 self._x_s_dt
             )  # DO I ALSO NEED TO PROVIDE SHORELINE X?
-            self._transporter.update()
+            self._transporter.update(self._x_s_dt, self._x_s)
             self._x_s = self._transporter.shoreline_x  # new shoreline position
 
         else:
