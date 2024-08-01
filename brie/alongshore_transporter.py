@@ -447,7 +447,7 @@ def _build_matrix(
         + dx_dt
     )
 
-    return mat.tocsc(), rhs, r_ipl, coast_diff
+    return mat.tocsr(), rhs, r_ipl, coast_diff #changing csc to csr
 
 
 class AlongshoreTransporter:
@@ -551,9 +551,9 @@ class AlongshoreTransporter:
         self._dx_dt = x_s_dt
         # self._shoreline_x = x_s
         # self._dy
-        # self._shoreline_angles = calc_shoreline_angles(
-        #     self._shoreline_x, spacing=self._dy
-        # )
+        self._shoreline_angles = calc_shoreline_angles(
+            self._shoreline_x, spacing=self._dy
+        )
         self._time += self._dt
 
         # lexi added:
