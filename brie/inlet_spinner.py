@@ -495,8 +495,8 @@ def inlet_morphodynamics(
     # KA: python object arrays to "mimic" Matlab cells for inlet tracking
     # in retrospect, probably didn't need objects. Empty list would have been fine.
     # LVB: got rid of object type specification
-    inlet_nex = np.empty(np.size(inlet_idx))
-    inlet_prv = np.empty(np.size(inlet_idx))
+    inlet_nex = np.empty(np.size(inlet_idx), dtype=object)
+    inlet_prv = np.empty(np.size(inlet_idx), dtype=object)
 
     # preallocate arrays for inlet migration and fractions based on I
     migr_up, delta, beta, beta_r, alpha, alpha_r, delta_r, Qs_in = [
@@ -967,7 +967,7 @@ class InletSpinner:
             self._wave_angle = self._wave_distribution.rvs(size=1)
 
         # calculate shoreline angle for each time step
-        calc_shoreline_angles(self._shoreline_x, self._dy, out=self._shoreline_angles)
+        self._shoreline_angles = calc_shoreline_angles(self._shoreline_x, self._dy)
 
         # sediment transport into inlets  KA: temporary placement until I figure out where this goes
         # self._q_s[:] = (
@@ -1010,6 +1010,7 @@ class InletSpinner:
         self._x_b_fld_dt = np.zeros(int(self._ny))  # reset array of flood tidal deltas
 
         w = self._bay_shoreline_x - self._shoreline_x  # barrier width # used correct updated variable
+        print ("a")
         self._barrier_volume = (
                 w * (self._h_b + 2) * np.sign(np.minimum(w, self._h_b))
         )  # barrier volume = barrier width times height + estimated inlet depth (KA: is inlet depth 2 m?)
