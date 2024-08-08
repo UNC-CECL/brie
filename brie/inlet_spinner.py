@@ -1053,7 +1053,7 @@ class InletSpinner:
                 inlet_morphodynamics(
                     self._inlet_idx, self._new_inlet, self._time_index, wi_cell, self._ny, self._dy, self._x_b_fld_dt, w, # use time_index instead of time
                     self._q_s, self._h_b, di_eq, self._d_b, self._Qinlet, self._rho_w, ai_eq, wi_eq, self._wave_height,
-                    self._x_b, self._x_s, self._x_s_dt, self._w_b_crit, self._omega0, self._inlet_y, self._inlet_age,
+                    self._bay_shoreline_x, self._shoreline_x, self._x_s_dt, self._w_b_crit, self._omega0, self._inlet_y, self._inlet_age,
                     self._d_sf
                 )  # inlet morphodynamics
             self._inlet_nr, self._inlet_migr, self._inlet_Qs_in, self._inlet_alpha, self._inlet_beta, \

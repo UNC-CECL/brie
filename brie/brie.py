@@ -607,6 +607,7 @@ class Brie:
             # update inlet model parameters prior to advancing one TS
             self._inlets.shoreline_x = self._x_s
             self._inlets.bay_shoreline_x = self._x_b
+            self._inlets._x_s_dt = self._x_s_dt
             self._inlets.update(self._h_b, self._z)
             self._x_b_fld_dt = self._inlets._x_b_fld_dt #get the updated values from inlet module
             self._Qinlet = self._inlets._Qinlet
