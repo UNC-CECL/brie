@@ -67,7 +67,7 @@ def run_brie(n_steps, dt, dy, x_shoreline, wave_angle):
     return brie
 
 
-@pytest.mark.parametrize("n_steps", [128])
+@pytest.mark.parametrize("n_steps", [8,16,32,64,128])
 def test_brie_matlab(test_case, n_steps):
     brie = run_brie(
         n_steps,
@@ -81,7 +81,10 @@ def test_brie_matlab(test_case, n_steps):
 
     expected_q_overwash_mean = test_case["q_overwash"][:n_steps].mean()
     expected_inlet_mean = test_case["q_inlet"][:n_steps].mean()
-
+    print("##")
+    print(actual_q_overwash_mean)
+    print(expected_q_overwash_mean)
+    print("##")
     assert len(brie._Qoverwash) == n_steps
     assert len(brie._Qinlet) == n_steps
 
@@ -89,7 +92,7 @@ def test_brie_matlab(test_case, n_steps):
     assert actual_inlet_mean == pytest.approx(expected_inlet_mean, rel=0.1)
 
 if __name__ == "__main__":
-    test_case = ALL_CASES[5]
+    test_case = ALL_CASES[23]
     n_steps = 128
     brie = run_brie(
         n_steps,
@@ -100,7 +103,9 @@ if __name__ == "__main__":
     )
     actual_q_overwash_mean = brie._Qoverwash.mean()
     actual_inlet_mean = brie._Qinlet.mean()
-
+    print("##")
+    print (actual_q_overwash_mean)
+    print("##")
     expected_q_overwash_mean = test_case["q_overwash"][:n_steps].mean()
     expected_inlet_mean = test_case["q_inlet"][:n_steps].mean()
 

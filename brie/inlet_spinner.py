@@ -372,8 +372,8 @@ def fluid_mechanics(
     )
 
     # see swart zimmerman
-    ah_star = omega0 * w[inlet_idx[0]] / np.sqrt(g * a0)
-    c_d = g * man_n ** 2 / (d_b[inlet_idx[0]] ** (1 / 3))
+    ah_star = omega0 * w[inlet_idx] / np.sqrt(g * a0) #only the first item in the list was used, edited to input the whole list
+    c_d = g * man_n ** 2 / (d_b[inlet_idx] ** (1 / 3))
     gam = np.maximum(
         1e-3,
         inlet_asp
@@ -381,12 +381,12 @@ def fluid_mechanics(
                 (omega0 ** 2)
                 * (1 - marsh_cover) ** 2
                 * (basin_length[inlet_all_idx_idx] ** 2)
-                * (basin_width[inlet_idx[0]] ** 2)
+                * (basin_width[inlet_idx] ** 2)
                 * a0
                 / g
         )
         ** (1 / 4)
-        / ((8 / 3 / np.pi) * c_d * w[inlet_idx[0]]),
+        / ((8 / 3 / np.pi) * c_d * w[inlet_idx]),
     )
     a_star_eq = a_star_eq_fun(ah_star, gam, u_e_star)
     u_eq = np.real(u(a_star_eq, gam, ah_star, a0))
@@ -394,7 +394,7 @@ def fluid_mechanics(
                     omega0
                     * (1 - marsh_cover)
                     * basin_length[inlet_all_idx_idx]
-                    * basin_width[inlet_idx[0]]
+                    * basin_width[inlet_idx]
                     * np.sqrt(a0 / g)
             ) * a_star_eq  # KA: does it matter that this was last defined during the Tstorm year?
 
@@ -402,7 +402,7 @@ def fluid_mechanics(
     # margin of 0.05 m/s for rounding errors etc
     inlet_close = np.logical_and(
         np.logical_or(np.less(u_eq, (u_e - 0.05)), np.isnan(u_eq)),
-        np.greater(w[inlet_idx[0]], 0),
+        np.greater(w[inlet_idx], 0),
     )
 
     # we don't have to think about this one every again!
@@ -692,12 +692,12 @@ def inlet_morphodynamics(
         #     [time_index - 1, inlet_idx[j - 1][0].astype("int32")]
         # )
         inlet_age.append(  # KA: shouldn't this be time_index-1?
-            [time-1, inlet_idx[j - 1].astype("int32")]
+            [time, inlet_idx[j - 1].astype("int32")] #index was off by 1
         )
 
     # reset arrays
     new_inlet = np.array([])
-    return inlet_idx, migr_up, delta, beta, alpha, Qs_in, inlet_age, Qinlet, inlet_y, x_b_fld_dt #added x_b_fld_dt to the return values of the funtion to update the variable in brie
+    return inlet_idx, migr_up, delta, beta, alpha, Qs_in, inlet_age, Qinlet, inlet_y, x_b_fld_dt, x_s_dt #added x_b_fld_dt and x_s_dt to the return values of the funtion to update the variable in brie
 
 
 def inlet_statistics(
@@ -1010,7 +1010,7 @@ class InletSpinner:
         self._x_b_fld_dt = np.zeros(int(self._ny))  # reset array of flood tidal deltas
 
         w = self._bay_shoreline_x - self._shoreline_x  # barrier width # used correct updated variable
-        print ("a")
+
         self._barrier_volume = (
                 w * (self._h_b + 2) * np.sign(np.minimum(w, self._h_b))
         )  # barrier volume = barrier width times height + estimated inlet depth (KA: is inlet depth 2 m?)
@@ -1049,7 +1049,8 @@ class InletSpinner:
                 self._man_n, self._d_b, self._marsh_cover, self._basin_width
             )  # do "fluid mechanics" of inlets
             # in paper they do sediment transport next, but I think it is okay to do it whenever
-            self._inlet_idx, migr_up, delta, beta, alpha, self._Qs_in, self._inlet_age, self._Qinlet, self._inlet_y, self._x_b_fld_dt = \
+            #RS, added x_s_dt to return values of the inlet_mprphodynamic function
+            self._inlet_idx, migr_up, delta, beta, alpha, self._Qs_in, self._inlet_age, self._Qinlet, self._inlet_y, self._x_b_fld_dt, self._x_s_dt = \
                 inlet_morphodynamics(
                     self._inlet_idx, self._new_inlet, self._time_index, wi_cell, self._ny, self._dy, self._x_b_fld_dt, w, # use time_index instead of time
                     self._q_s, self._h_b, di_eq, self._d_b, self._Qinlet, self._rho_w, ai_eq, wi_eq, self._wave_height,

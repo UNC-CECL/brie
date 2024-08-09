@@ -609,6 +609,7 @@ class Brie:
             self._inlets.bay_shoreline_x = self._x_b
             self._inlets._x_s_dt = self._x_s_dt
             self._inlets.update(self._h_b, self._z)
+            #self._x_s_dt = self._inlets._x_s_dt
             self._x_b_fld_dt = self._inlets._x_b_fld_dt #get the updated values from inlet module
             self._Qinlet = self._inlets._Qinlet
 
@@ -627,9 +628,11 @@ class Brie:
         if self._ast_model_on:
 
             # update AlongshoreTransporter with new change in shoreline position
-            self._transporter.dx_dt = (
-                self._x_s_dt
-            )  # DO I ALSO NEED TO PROVIDE SHORELINE X?
+            # RS, wrong variable was updated, commented out , we performed the update inside the function
+            # self._transporter.dx_dt = (
+            #     self._x_s_dt
+            # )  # DO I ALSO NEED TO PROVIDE SHORELINE X?
+
             self._transporter.update(self._x_s_dt, self._x_s)
             self._x_s = self._transporter.shoreline_x  # new shoreline position
 
