@@ -220,7 +220,7 @@ def calc_coast_diffusivity(
     wave_height=1.0,
     wave_period=10.0,
     berm_ele=2.0,
-    n_bins=180,  # LVB changed from 181 to 180
+    n_bins=181,  # LVB changed from 181 to 180
 ):
     r"""Calculate sediment diffusion along a coastline. Corresponds to Equations 37-39 in NLT19 [1]_, with formulations from
     AM06 [2]_.
@@ -261,19 +261,19 @@ def calc_coast_diffusivity(
 
     # all_angles, step = np.linspace(-89.5, 89.5, n_bins, retstep=True)
     # all_angles = np.deg2rad(all_angles)
-
-    all_angles, step = np.linspace(
-        -90.0, 90.0, 180, retstep=True
-    ) # Changed to match the original code, must be checked
+    all_angles, step = np.linspace(-np.pi / 2.0, np.pi / 2.0, n_bins, retstep=True)
+    # all_angles, step = np.linspace(
+    #     -90.0, 90.0, n_bins+1, retstep=True
+    # ) # Changed to match the original code, must be checked
 
     # all_angles, step = np.linspace(-90, 90, n_bins+1, retstep=True)  # same
-    all_angles = np.deg2rad(all_angles)
+    # all_angles = np.deg2rad(all_angles)
 
     d_sf = 8.9 * wave_height
 
     # e_phi_0 = wave_pdf(all_angles) * np.deg2rad(step)
-    e_phi_0 = wave_pdf(all_angles) * np.deg2rad(step)  # same as wave_pdf in master except its not
-    e_phi_0[0] = 0 # e_phi_[0] was set to zero in origina repo
+    e_phi_0 = wave_pdf(all_angles) * step  # same as wave_pdf in master except its not
+
     # e_phi_0 = np.concatenate(([0], e_phi_0)) shifting to right
     # e_phi_0 = e_phi_0[0:-1] shifting to right
     #Roya--here we needed to add "np.deg2rad"
@@ -289,7 +289,7 @@ def calc_coast_diffusivity(
     diff_phi0_theta = (
         -(
             AlongshoreTransporter.K
-            / (1.9 + d_sf) #berm ele value was 2 but the org code used 1.9 value here, must be checked
+            / (berm_ele + d_sf) #berm ele value was 2 but the org code used 1.9 value here, must be checked
             * wave_height ** 2.4
             * wave_period ** 0.2
         )
@@ -323,6 +323,7 @@ def calc_coast_diffusivity(
             ),
         )
     ] # This was changed to match the original code.
+    coast_diff = np.interp(0 - shoreline_angles, all_angles, coast_diff_phi0_theta)
     # coast_diff = np.interp(
     #     -shoreline_angles*180/np.pi, all_angles, coast_diff_phi0_theta
     # )  # this is D above, evaluated at theta
@@ -379,7 +380,6 @@ def _build_tridiagonal_matrix(diagonal, lower=None, upper=None):
 
 
 def _build_matrix(
-    shoreline_angles,
     shoreline_x,
     wave_distribution,
     dy=1.0,
@@ -407,7 +407,7 @@ def _build_matrix(
     float or array of float
         Alongshore transport along the shoreline.
     """
-
+    shoreline_angles = calc_shoreline_angles(shoreline_x, spacing=dy)
     #shoreline_angles = calc_shoreline_angles(shoreline_x, spacing=dy)
 
     coast_diff, _ = calc_coast_diffusivity(
@@ -430,8 +430,12 @@ def _build_matrix(
     #     a_max=None,
     # )
 
-    r_ipl = coast_diff * dt / (2.0 * dy ** 2)
-
+    #r_ipl = coast_diff * dt / (2.0 * dy ** 2)
+    r_ipl = np.clip(
+        coast_diff * dt / (2.0 * dy ** 2),
+        a_min=0.0,
+        a_max=None,
+    )
 
     mat = _build_tridiagonal_matrix(1.0 + 2.0 * r_ipl, lower=-r_ipl, upper=-r_ipl)
 
@@ -461,7 +465,7 @@ class AlongshoreTransporter:
     >>> transporter.update()
     """
 
-    K = calc_alongshore_transport_k(gravity=9.81)
+    K = calc_alongshore_transport_k()
 
     def __init__(
         self,
@@ -547,8 +551,8 @@ class AlongshoreTransporter:
     #
     #     return mat.tocsc(), rhs
 
-    def update(self, x_s_dt, x_s):
-        self._dx_dt = x_s_dt
+    def update(self):
+        # self._dx_dt = x_s_dt
         # self._shoreline_x = x_s
         # self._dy
         self._shoreline_angles = calc_shoreline_angles(
@@ -591,7 +595,7 @@ class AlongshoreTransporter:
 
         # calculates diffusivity and then returns the tridiagonal matrix and right-hand-side of Equation 41 in NLT19
         mat, rhs, _ , self._coast_diff = _build_matrix(
-            self._shoreline_angles,
+            # self._shoreline_angles,
             self._shoreline_x,
             self._wave_distribution,
             dy=self._dy,

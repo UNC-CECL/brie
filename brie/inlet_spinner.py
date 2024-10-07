@@ -302,7 +302,7 @@ def organize_inlet(inlet_idx, ny):
     """
 
     # inlet_idx_mat is just inlet_idx concatenated into a single array and made a float so we can use NaNs
-    print(inlet_idx)
+    # print(inlet_idx)
     inlet_idx_mat = np.hstack(inlet_idx).astype(float)
     inlet_all_idx = np.sort(inlet_idx_mat)
     inlet_all_idx_idx = np.argsort(inlet_idx_mat)
@@ -955,9 +955,9 @@ class InletSpinner:
 
         self._time = 0
 
-    def update(self, h_b, z): #updated value of h_b, and z were only updated in brie module and were not sent to this intel_spinner module.
-        self._h_b = h_b
-        self._z = z
+    def update(self): #updated value of h_b, and z were only updated in brie module and were not sent to this intel_spinner module.
+        # self._h_b = h_b
+        # self._z = z
         self._time += int(self._dt)
         self._time = int(self._time)
         self._time_index += 1 # update time index at each iteration

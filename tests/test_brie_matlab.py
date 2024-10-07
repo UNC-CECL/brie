@@ -9,7 +9,7 @@ import pathlib
 import numpy as np
 import pytest
 from scipy.io import loadmat
-
+import pickle as pkl
 from brie.brie import Brie
 
 DATA_DIR = pathlib.Path(__file__).parent / "test_brie_matlab"
@@ -92,25 +92,52 @@ def test_brie_matlab(test_case, n_steps):
     assert actual_inlet_mean == pytest.approx(expected_inlet_mean, rel=0.1)
 
 if __name__ == "__main__":
-    test_case = ALL_CASES[23]
-    n_steps = 128
-    brie = run_brie(
-        n_steps,
-        test_case["dt"],
-        test_case["dy"],
-        test_case["x_shoreline"],
-        test_case["wave_angle"],
-    )
-    actual_q_overwash_mean = brie._Qoverwash.mean()
-    actual_inlet_mean = brie._Qinlet.mean()
-    print("##")
-    print (actual_q_overwash_mean)
-    print("##")
-    expected_q_overwash_mean = test_case["q_overwash"][:n_steps].mean()
-    expected_inlet_mean = test_case["q_inlet"][:n_steps].mean()
+    # dt = [0.05, 0.1, 0.25, 0.50, 1]  # yr
+    # dy = [1000, 500, 250, 100, 50]  # , 10]   # m
+    dts = []
+    dys = []
+    for test_case in ALL_CASES:
+        dts.append(test_case["dt"])
+        dys.append(test_case["dy"])
 
-    assert len(brie._Qoverwash) == n_steps
-    assert len(brie._Qinlet) == n_steps
+    dts = np.unique(np.array(dts))
+    dys = np.unique(np.array(dys))
+    dys = -np.sort(-dys)
+    inputs_p1 = range(np.size(dts))
+    inputs_p2 = range(np.size(dys))
 
-    assert actual_q_overwash_mean == pytest.approx(expected_q_overwash_mean, rel=0.1)
-    assert actual_inlet_mean == pytest.approx(expected_inlet_mean, rel=0.1)
+    bries = np.empty((np.size(dts), np.size(dys)), dtype=object)
+    for test_case in ALL_CASES:
+        n_steps = 128
+        brie = run_brie(
+            n_steps,
+            test_case["dt"],
+            test_case["dy"],
+            test_case["x_shoreline"],
+            test_case["wave_angle"],
+        )
+        # if test_case["dt"] in dt and test_case["dy"] in dy:
+        ii = np.where(dts == test_case["dt"])
+        jj = np.where(dys == test_case["dy"])
+        bries[ii, jj] = brie
+            # bries.
+        # actual_q_overwash_mean = brie._Qoverwash.mean()
+        # actual_inlet_mean = brie._Qinlet.mean()
+        # print("##")
+        # print (actual_q_overwash_mean)
+        # print("##")
+        # expected_q_overwash_mean = test_case["q_overwash"][:n_steps].mean()
+        # expected_inlet_mean = test_case["q_inlet"][:n_steps].mean()
+
+    # np.savez(bries, "./a.npz")
+
+
+    # assert len(brie._Qoverwash) == n_steps
+    # assert len(brie._Qinlet) == n_steps
+
+    # assert actual_q_overwash_mean == pytest.approx(expected_q_overwash_mean, rel=0.1)
+    # assert actual_inlet_mean == pytest.approx(expected_inlet_mean, rel=0.1)
+
+    # np.save("./a.npz", bries)
+    file_ = open("./a.pkl", "wb")
+    pkl.dump(bries, file_)

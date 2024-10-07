@@ -13,7 +13,7 @@ from scipy.io import loadmat
 from brie.brie import Brie
 
 os.chdir(
-    "/Users/Lexi/PycharmProjects/brie/tests/test_brie_matlab"
+    "/Users/rsahrae/PycharmProjects/pythonProject_CE_roya/scripts/"
 )
 
 # subset of indices for testing grid discretization
@@ -119,8 +119,13 @@ for ii in inputs_dt:
             Qinlet_total_py[ii, jj] + Qoverwash_total_py[ii, jj]
         )
 
+        inlet_age_tmp = brie._inlets._inlet_age.copy()
+        for i in range(len(inlet_age_tmp)):
+            inlet_age_tmp[i] = [inlet_age_tmp[i][0],inlet_age_tmp[i][1][0]]
+
+
         inlet_age_py = np.array(
-            brie._inlet_age
+            inlet_age_tmp
         )  # we are only going to look at the last model output
 
         # and now matlab output
