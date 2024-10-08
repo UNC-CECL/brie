@@ -37,14 +37,7 @@ for barrier island evolution that incorporates both tidal and overwash sediment 
 # (including the waves class, alongshore transporter, and inlet spinner).
 
 
-The CoAStal Community-lAnDscape Evolution (cascade) model is a coupled landscape
-and human-dynamics modeling framework. cascade combines elements of two exploratory
-morphodynamic models of barrier evolution -- barrier3d (Reeves et al., 2021) and the
-BarrierR Inlet Environment (brie) model (Nienhuis & Lorenzo-Trueba, 2019) -- into a
-single model framework (figure below). barrier3d, a spatially-explicit cellular exploratory model
-, is the core of cascade. It is used within the cascade framework to simulate the effects of individual
-storm events and SLR on shoreface evolution; dune dynamics, including dune growth, erosion, and migration
-; and overwash deposition by individual storms. brie is used to simulate large-scale coastline evolution arising from alongshore sediment transport processes; this is accomplished by connecting individual barrier3d models through diffusive alongshore sediment transport. Human dynamics are incorporated in cascade in two separate modules. The first module simulates strategies for preventing roadway pavement damage during overwashing events, including rebuilding roadways at sufficiently low elevations to allow for burial by overwash, constructing large dunes, and relocating the road into the barrier interior. The second module incorporates management strategies for maintaining a coastal community, including beach nourishment, dune construction, and overwash removal. For a full description of model dynamics, please see "The Future of Developed Barrier Systems - Part I: Pathways Toward Uninhabitability, Drowning, and Rebound" by Anarde et al., (2024, Earth ArXiv preprint).
+
 
 ###############################################################################
 ## Default initial conditions
