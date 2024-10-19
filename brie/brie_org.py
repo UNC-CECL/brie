@@ -3,7 +3,6 @@ import yaml
 from numpy.lib.scimath import power as cpower, sqrt as csqrt
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import spsolve
-
 from .alongshore_transporter import calc_alongshore_transport_k
 from .waves import WaveAngleGenerator
 
@@ -136,7 +135,7 @@ class Brie:
 
         # name of output file
         self._name = name
-
+        self._basin_width = None
         # which modules to run
         self._barrier_model_on = barrier_model
         self._ast_model_on = ast_model
@@ -849,7 +848,7 @@ class Brie:
 
             # KA: added if statement here because error thrown for empty list
             if (
-                np.size(self._inlet_idx) != 0
+                len(self._inlet_idx) != 0
             ):  # KA: inlet_idx is a list here with arrays of different size (from previous time loop)
                 self._barrier_volume[np.hstack(self._inlet_idx)] = np.inf
 
@@ -859,11 +858,11 @@ class Brie:
             # storm for new inlet every 10 year
             if (
                 np.mod(self._t[self._time_index - 1], 10) < (self._dt / 2)
-                and np.size(self._inlet_idx) < self._inlet_max
+                and len(self._inlet_idx) < self._inlet_max
             ):
 
                 # potential basin length
-                if np.size(self._inlet_idx) == 0:
+                if len(self._inlet_idx) == 0:
                     basin_length = self._Jmin + np.zeros(int(self._ny)).astype(float)
                 else:
                     # KA: there might be a more sophisticated way to replicate
@@ -919,7 +918,9 @@ class Brie:
                 )  # KA: not sure if I need the np.array here
 
             # get rid of duplicates and neighbours
-            if np.size(self._inlet_idx) != 0:
+            # if(len(self._inlet_idx) > 0):
+            #     print("a")
+            if len(self._inlet_idx) != 0:
                 # KA: inlet_idx_mat is just inlet_idx concatenated into a single
                 # array and made a float so we can use NaNs
                 self._inlet_idx_mat = np.hstack(self._inlet_idx).astype(float)
@@ -1233,7 +1234,7 @@ class Brie:
                     np.fix(self._time_index / self._dtsave).astype(int) - 1
                 ] = np.mean(migr_up / self._dt)
 
-                if np.size(self._inlet_idx) != 0:
+                if len(self._inlet_idx) != 0:
                     self._inlet_Qs_in[
                         np.fix(self._time_index / self._dtsave).astype(int) - 1
                     ] = np.mean(Qs_in)
