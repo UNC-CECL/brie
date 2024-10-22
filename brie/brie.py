@@ -1252,19 +1252,16 @@ class Brie:
 
             # inlet statistics
             if np.mod(self._time_index, self._dtsave) == 0:
-                # KA: modified this from matlab version so that I can save every
-                # time step in python
-                # skip first time step (initial condition)
-                self._inlet_nr[
-                    np.fix(self._time_index / self._dtsave).astype(int) - 1
-                ] = len(
-                    self._inlet_idx
-                )  # number of inlets
-                self._inlet_migr[
-                    np.fix(self._time_index / self._dtsave).astype(int) - 1
-                ] = np.mean(migr_up / self._dt)
 
                 if len(self._inlet_idx) != 0:
+                    self._inlet_nr[
+                        np.fix(self._time_index / self._dtsave).astype(int) - 1
+                        ] = len(
+                        self._inlet_idx
+                    )  # number of inlets
+                    self._inlet_migr[
+                        np.fix(self._time_index / self._dtsave).astype(int) - 1
+                        ] = np.mean(migr_up / self._dt)
                     self._inlet_Qs_in[
                         np.fix(self._time_index / self._dtsave).astype(int) - 1
                     ] = np.mean(Qs_in)
