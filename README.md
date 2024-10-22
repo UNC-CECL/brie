@@ -150,7 +150,7 @@ for _ in range(brie.nt - 1):
 ```
 
 **The "finalize" function deletes some variables to make a smaller file for saving, 
-and it makes the variable Qinlet m^3/yr instead of XXXXX**
+and it makes the variable Qinlet m3/m/yr instead of m^3/yr**
 ```bash 
 brie.finalize()       
 ```
