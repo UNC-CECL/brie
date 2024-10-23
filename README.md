@@ -145,8 +145,10 @@ wave_height=1.0,
         inlet_min_spacing=50000.0, # Minimum inlet spacing [m]
 )
 
-for _ in range(brie.nt - 1):
-  brie.update()  # update the model by a time step
+for i in range(brie.nt-1):
+    if (brie.drown):
+        break
+    brie.update() # update the model by a time step
 ```
 
 **The "finalize" function deletes some variables to make a smaller file for saving, 
