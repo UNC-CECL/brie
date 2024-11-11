@@ -31,7 +31,7 @@ of model dynamics, the reader is directed to http://dx.doi.org/10.5194/gmd-2019-
 In this python version of *brie*, there is functionality to alternatively use Barrier3D
 (Reeves et al., 2019) as the barrier overwash model. Coupling with Barrier3D requires the model CASCADE 
 (Anarde et al., 2024a,b). 
-![figure](/FIGS/brie_domain.png)
+![figure](/notebooks/brie_domain.png)
 
 ###############################################################################
 # Installation
