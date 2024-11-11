@@ -12,8 +12,10 @@ and easier coupling with other modeling frameworks.
 When using any version of the *brie* model, please reference the original publication:
 http://dx.doi.org/10.5194/gmd-2019-10.
 
+![figure](/notebooks/brie_domain.png)
+
 ###############################################################################
-# BRIE Model
+# Model Orview
 Models that simulate barrier island changes over geological timescales (centuries to millenia) 
 typically focus on the role of storm overwash, and its couplings with shoreface and back-barrier dynamics. 
 However, field studies suggest that tidal inlets play a significant role in transgressive
@@ -31,7 +33,6 @@ of model dynamics, the reader is directed to http://dx.doi.org/10.5194/gmd-2019-
 In this python version of *brie*, there is functionality to alternatively use Barrier3D
 (Reeves et al., 2019) as the barrier overwash model. Coupling with Barrier3D requires the model CASCADE 
 (Anarde et al., 2024a,b). 
-![figure](/notebooks/brie_domain.png)
 
 ###############################################################################
 # Installation
