@@ -12,10 +12,10 @@ and easier coupling with other modeling frameworks.
 When using any version of the *brie* model, please reference the original publication:
 http://dx.doi.org/10.5194/gmd-2019-10.
 
-![figure](/notebooks/brie_domain.png)
+<img src="/notebooks/brie_domain.png" width="400"/>
 
 ###############################################################################
-# Model Orview
+# Model dynamics
 Models that simulate barrier island changes over geological timescales (centuries to millenia) 
 typically focus on the role of storm overwash, and its couplings with shoreface and back-barrier dynamics. 
 However, field studies suggest that tidal inlets play a significant role in transgressive
