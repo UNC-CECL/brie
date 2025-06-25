@@ -27,7 +27,7 @@ class Brie:
         name="ExampleBarrierPlot5",
         barrier_model=True,
         ast_model=True,
-        inlet_model=True,
+        inlet_model=True, #RS: false to True
         sed_strat=False,
         bseed=False,
         b3d=False,
@@ -522,7 +522,8 @@ class Brie:
         self._wave_angle = new_angle
 
 
-    def update(self):
+
+    def update(self, inlet_idx=None):
         """Update BRIE by a single time step."""
         self._time_index += 1
         # print('time_index=',self._time_index)
@@ -610,7 +611,7 @@ class Brie:
             self._inlets._x_s_dt = self._x_s_dt
             self._inlets._z = self._z
             self._inlets._h_b = self._h_b
-            self._inlets.update()
+            self._inlets.update(inlet_idx)
             #self._x_s_dt = self._inlets._x_s_dt
             self._x_b_fld_dt = self._inlets._x_b_fld_dt #get the updated values from inlet module
             self._Qinlet = self._inlets._Qinlet
