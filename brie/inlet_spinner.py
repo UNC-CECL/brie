@@ -231,7 +231,7 @@ def create_inlet(inlet_idx, ny, dy, barrier_volume, min_inlet_separation=10000):
             inlet_idx: indices of all inlets
     """
 
-    new_inlet = []
+    new_inlet = -1
 
     # calculate basin length
     if len(inlet_idx) == 0: #used correct function to get size of the list
@@ -508,7 +508,7 @@ def inlet_morphodynamics(
 
         # breach sediment is added to the flood-tidal delta
         if (
-                new_inlet.size > 0
+                (new_inlet) >= 0
                 and inlet_idx[j - 1] == new_inlet
         ):  # KA: for python, need to check that the array isn't empty
             # KA: here, Jaap allows the indexing to wrap such that a new
@@ -628,7 +628,8 @@ def inlet_morphodynamics(
         temp_idx = np.r_[
             inlet_prv[j - 1], inlet_idx[j - 1], inlet_nex[j - 1]
         ].astype(int)
-
+        #Roya, changing this to list
+        temp_idx = temp_idx.tolist()
         x_b_fld_dt[temp_idx] = x_b_fld_dt[temp_idx] + fld_delta / (
                 np.size(temp_idx) * dy
         ) / (h_b[temp_idx] + d_b[temp_idx])
@@ -676,6 +677,7 @@ def inlet_morphodynamics(
         #         self._x_s_dt[inlet_nex[j - 1]]
         #         + inlet_sink / (self._h_b[inlet_nex[j - 1]] + self._d_sf) / self._dy
         # )
+
         x_s_dt[temp_idx] = (
                 x_s_dt[temp_idx]
                 + inlet_sink
@@ -727,9 +729,18 @@ def inlet_statistics(
             ] = len(
             inlet_idx
         )  # number of inlets
-        inlet_migr[
-            np.fix(time / dtsave).astype(int) - 1
-            ] = np.mean(migr_up / dt)
+        # print(dtsave)
+        # print(time)
+        # print(migr_up)
+        # print(dt)
+        if len(migr_up) == 0:
+            inlet_migr[
+                np.fix(time / dtsave).astype(int) - 1
+                ] = 0
+        else:
+            inlet_migr[
+                np.fix(time / dtsave).astype(int) - 1
+                ] = np.mean(migr_up / dt)
 
         if len(inlet_idx) != 0:
             inlet_Qs_in[
@@ -930,7 +941,7 @@ class InletSpinner:
         # initialize empty arrays
         self._inlet_idx = []
         self._inlet_idx_mat = []
-        self._new_inlet = []
+        self._new_inlet = -1
         # self._inlet_idx_mat = np.array([]).astype(
         #     float
         # )  # KA: we use this variable for NaN operations
@@ -1016,27 +1027,30 @@ class InletSpinner:
         )  # barrier volume = barrier width times height + estimated inlet depth (KA: is inlet depth 2 m?)
 
         # where there is currently an inlet, set the barrier volume at that location to infinity
-        if (
-                len(self._inlet_idx) != 0
-        ):  # KA: inlet_idx is a list here with arrays of different sizes (from previous time loop)
-            self._barrier_volume[np.hstack(self._inlet_idx)] = np.inf
-            self._inlet_idx.append(
-                np.nonzero(self._barrier_volume < 0)[0]
-            )  # add drowned cells to list of inlets
+        # if (
+        #         len(self._inlet_idx) != 0
+        # ):  # KA: inlet_idx is a list here with arrays of different sizes (from previous time loop)
+        #     self._barrier_volume[np.hstack(self._inlet_idx)] = np.inf
+        #
+        #
+        #     self._inlet_idx.append(
+        #         np.nonzero(self._barrier_volume < 0)[0]
+        #     )  # add drowned cells to list of inlets
 
-        # create a new inlet every # years, unless at max # inlets, or if boolean says to create inlet this year
-        # this is different because we have replaced 10 with a variable for inlet frequency (which is 10)
-        if (
-                np.mod(self._t[self._time_index - 1], self._inlet_storm_frequency) #use time index instead of time
-                < (self._dt / 2)
-                and len(self._inlet_idx) < self._inlet_max
-                or self._create_inlet_now  # NOTE TO ERIC: there is probably a more elegant way to do this
-        ):
-            self._inlet_idx, self._new_inlet = create_inlet(
-                self._inlet_idx, self._ny, self._dy, self._barrier_volume
-            )
+        #roya commented out this part to prevent making inlet
+        # # create a new inlet every # years, unless at max # inlets, or if boolean says to create inlet this year
+        # # this is different because we have replaced 10 with a variable for inlet frequency (which is 10)
+        # if (
+        #         np.mod(self._t[self._time_index - 1], self._inlet_storm_frequency) #use time index instead of time
+        #         < (self._dt / 2)
+        #         and len(self._inlet_idx) < self._inlet_max
+        #         or self._create_inlet_now  # NOTE TO ERIC: there is probably a more elegant way to do this
+        # ):
+        #     self._inlet_idx, self._new_inlet = create_inlet(
+        #         self._inlet_idx, self._ny, self._dy, self._barrier_volume
+        #     )
 
-            self._basin_width = np.maximum(0, self._z / self._s_background[0] - self.bay_shoreline_x) #new place for calculation of basin width at each iteration
+        #     self._basin_width = np.maximum(0, self._z / self._s_background[0] - self.bay_shoreline_x) #new place for calculation of basin width at each iteration
 
         # print(self._inlet_idx)
         # print(self._new_inlet)
@@ -1063,7 +1077,7 @@ class InletSpinner:
                 self._inlet_delta, beta, self._inlet_beta, alpha, self._inlet_alpha, self._Qs_in, self._inlet_Qs_in,
                 ai_eq, self._inlet_ai, self._dt
             )  # inlet statistics
-            self._new_inlet = np.array([]) #erase new inlets after each iterationm, check
+            self._new_inlet = -1 #erase new inlets after each iterationm, check
             # print("###")
             # print(brie._Qoverwash.mean())
             # print("###")

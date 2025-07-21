@@ -611,7 +611,7 @@ class Brie:
             self._inlets._x_s_dt = self._x_s_dt
             self._inlets._z = self._z
             self._inlets._h_b = self._h_b
-            self._inlets.update(inlet_idx)
+            self._inlets.update()
             #self._x_s_dt = self._inlets._x_s_dt
             self._x_b_fld_dt = self._inlets._x_b_fld_dt #get the updated values from inlet module
             self._Qinlet = self._inlets._Qinlet
