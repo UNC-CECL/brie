@@ -329,7 +329,8 @@ def calc_coast_diffusivity(
     # )  # this is D above, evaluated at theta
     # return np.interp(shoreline_angles, all_angles, y) * np.sign(-wave_angle)
     # return np.interp(-wave_angle, all_angles, y)  # * np.sign(-wave_angle)
-
+    # print("Shoreline Angles (rad):", shoreline_angles)
+    # print("Calculated Diffusivity (m^2/s):", coast_diff)
     return coast_diff, coast_diff_phi0_theta  # [m^2/s]
 
 
@@ -613,6 +614,9 @@ class AlongshoreTransporter:
     @property
     def shoreline_x(self):
         return self._shoreline_x
+    @shoreline_x.setter
+    def shoreline_x(self, new_val):
+        self._shoreline_x = new_val
 
     @property
     def wave_height(self):

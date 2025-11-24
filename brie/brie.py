@@ -265,6 +265,9 @@ class Brie:
         self._x_t = (self._z - self._d_sf) / self._s_background + np.zeros(
             self._ny
         )  # position shoreface toe [m]
+        # print(f's_background : {self._s_background}')
+        # print(f'_d_sf : {self._d_sf}')
+
 
         # KA - used for testing/debugging brie_org.py vs. brie.m
         if self._bseed:
@@ -523,7 +526,7 @@ class Brie:
 
 
 
-    def update(self, inlet_idx=None):
+    def update(self):
         """Update BRIE by a single time step."""
         self._time_index += 1
         # print('time_index=',self._time_index)
@@ -533,6 +536,7 @@ class Brie:
             self._dt * self._slr[self._time_index - 1]
         )  # height of sea level
         w = self._x_b - self._x_s  # barrier width
+        # print(f'w brie : {w}')
         d_b = np.minimum(
             self._bb_depth * np.ones(np.size(self._x_b)),
             self._z - (self._s_background * self._x_b),
@@ -546,18 +550,24 @@ class Brie:
 
 
         if self._barrier_model_on:
+            print(f'Barrier model working in RBIE update')
             # volume deficit
             Vd_b = np.maximum(0, (self._w_b_crit - w) * (self._h_b + d_b))
+            # print(f'Vd_b : {Vd_b}')
             Vd_h = np.maximum(0, (self._h_b_crit - self._h_b) * w)
+            # print(f'Vd_h : {Vd_h}')
             Vd = Vd_b + Vd_h
+            # print(f'Vd : {Vd}')
 
             # overwash fluxes [m^3/m]
             Qow_b = self._dt * self._Qow_max * Vd_b / np.maximum(Vd, self._Vd_max)
+            # print(f'Qow_b : {Qow_b}')
             # overwash flux deposited in the back barrier (LTA14)
             Qow_h = self._dt * self._Qow_max * Vd_h / np.maximum(Vd, self._Vd_max)
+            # print(f'Qow_h : {Qow_h}')
             # overwash flux deposited on top of the existing barrier (LTA14)
             Qow = Qow_b + Qow_h
-
+            # print(f'Qow : {Qow}')
             # shoreface flux [m^3/m]
             Qsf = self._dt * self._k_sf * (self._s_sf_eq - s_sf)
 
@@ -585,7 +595,7 @@ class Brie:
 
             # how much q shoreface in total [m3/yr] [KA: added for comparison to B3D]
             self._Qshoreface[self._time_index - 1] = np.sum(self._dy * Qsf / self._dt)
-
+            # print(f'Qshoreface: {self._Qshoreface}')
         elif self._b3d_barrier_model_on:
             pass
             # do nothing, x_t_dt, x_s_dt, x_b_dt, and h_b_dt all come from Barrier3d (is there a better way to do this?)
@@ -611,9 +621,10 @@ class Brie:
             self._inlets._x_s_dt = self._x_s_dt
             self._inlets._z = self._z
             self._inlets._h_b = self._h_b
+            print("updating inlets in brie:::")
             self._inlets.update()
-            #self._x_s_dt = self._inlets._x_s_dt
-            self._x_b_fld_dt = self._inlets._x_b_fld_dt #get the updated values from inlet module
+            self._x_s_dt = self._inlets._x_s_dt
+            self._x_b_fld_dt = self._inlets._bay_shoreline_x_fld_dt #get the updated values from inlet module
             self._Qinlet = self._inlets._Qinlet
 
 
@@ -624,6 +635,21 @@ class Brie:
             # inlet_sink = 0
             self._x_b_fld_dt = 0
 
+        # # Explicitly manage the state of any active inlet cells to ensure physical consistency.
+        # # This overrides any incorrect values (like 0.0) that may come from other modules
+        # # for a drowned segment.
+        # if self._inlet_model_on and len(self._inlets._inlet_idx) > 0:
+        #     try:
+        #         # hstack converts the list of inlet index arrays into a single flat array of all inlet cells
+        #         all_inlet_indices = np.hstack(self._inlets._inlet_idx).astype(int)
+        #
+        #         # For all cells that are part of an inlet:
+        #         self._h_b[all_inlet_indices] = 0  # Barrier height must be zero.
+        #
+        #
+        #     except ValueError:
+        #         # This handles a rare case where the inlet_idx list might be empty after hstack
+        #         pass
         # do implicit thing (updated on May 27, 2020 to force shoreline diffusivity to be greater than zero)
         # copied from KA brie
         # I think we will want to put this before inlets, OR we just need to use the necessary functions
@@ -646,6 +672,10 @@ class Brie:
         self._x_t = self._x_t + self._x_t_dt
         self._x_b = self._x_b + self._x_b_dt + self._x_b_fld_dt
         self._h_b = self._h_b + self._h_b_dt
+        # print(f'x_t brie: {self._x_t}')
+        # print(f'x_s brie: {self._x_s}')
+        # print(f'x_b brie: {self._x_b}')
+        # print(f'h_b brie: {self._h_b}')
 
         # save subset of BRIE variables
         # (KA: I changed this from mod = 1 to mod = 0 to allow for saving every 1 timestep)
@@ -667,14 +697,16 @@ class Brie:
                 :, np.fix(self._time_index / self._dtsave).astype(int) - 1
             ] = s_sf
 
+            # print(f's_sf : {self._s_sf_save}')
+            # print(f'Qoverwash in BRIE : {self._Qoverwash}')
     ###############################################################################
     # Finalize: only return necessary variables
     ###############################################################################
 
     def finalize(self):
         if self._inlet_model_on:
-            self._Qinlet = self._Qinlet / self._dt  # put into m3/yr
-            self._Qinlet_norm = (self._Qinlet / self._dy)  # put into m3/m/yr
+            self._Qinlet = self._inlets._Qinlet / self._dt  # put into m3/yr
+            self._Qinlet_norm = (self._inlets._Qinlet/ self._dy)  # put into m3/m/yr
 
 
 

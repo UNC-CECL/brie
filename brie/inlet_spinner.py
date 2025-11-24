@@ -43,7 +43,7 @@ def inlet_fraction(a, b, c, d, I):
     return a + (b / (1 + c * (I ** d)))
 
 
-def u(a_star, gam, ah_star, a0):
+def u(a_star, gam, ah_star, a0): # velcotiy
     """new explicit relationship between boundary conditions and inlet area"""
     return np.sqrt(g * a0) * np.sqrt(
         gam
@@ -207,81 +207,82 @@ def calc_inlet_alongshore_transport(
     )
 
 
-def create_inlet(inlet_idx, ny, dy, barrier_volume, min_inlet_separation=10000):
-    r"""Creates a new inlet at the location of minimum barrier volume, but only if inlets are far enough away from
-    existing inlets (Roos et al.,2013).
-
-        Parameters
-        ----------
-        inlet_idx: list of int
-            Indices of inlet locations
-        ny: int
-            Number of alongshore cells
-        dy: int
-            Length of alongshore cells [m]
-        barrier_volume: array
-            Barrier width times height + estimated inlet depth
-        min_inlet_separation: int
-            Minimum separation distance of inlets; from Roos et al., (2013) [m]
-
-        Returns
-        -------
-        array of integers
-            new_inlet: index of the newest inlet
-            inlet_idx: indices of all inlets
-    """
-
-    new_inlet = -1
-
-    # calculate basin length
-    if len(inlet_idx) == 0: #used correct function to get size of the list
-        # based on matlab version we want to get 1,000 (ny) instances of 10,000 (Jmin)
-        basin_length = min_inlet_separation * np.ones(int(ny)).astype(float)
-        # basin_length = min_inlet_separation + np.zeros(int(ny)).astype(float) # DOES NOT WORK IN PYTHON
-    else:
-        # NOTE TO ERIC: there might be a more sophisticated way to replicate matlab's bsxfun, but alas I had to divide
-        # into two operations to get this two work
-        inlet_idx_mat = np.hstack(inlet_idx)
-        basin_length = np.ravel(
-            (
-                    np.array(([-ny, 0, ny]))
-                    + np.reshape(
-                inlet_idx_mat + 1,
-                (np.size(inlet_idx_mat), 1),
-            )
-            ).T
-        )  # apply min_inlet_separation/2 in each direction
-        basin_length = np.amin(
-            np.minimum(
-                min_inlet_separation,
-                2
-                * dy
-                * np.abs(
-                    np.arange(1, ny + 1, 1)
-                    - np.reshape(basin_length, (np.size(basin_length), 1))
-                ),
-            ),
-            axis=0,
-        )
-
-    # find new inlets only if its far enough away from existing inlets
-    # i.e., check if there is an instance of min_inlet_separation: if the number of inlets has been saturated,
-    # then we keep new_inlet empty from previous time loop
-    # LVB: barrier volume must be same dimensions as idx
-    idx = np.nonzero(basin_length > (min_inlet_separation - 1))[0]  # idx is an array from 0-999
-    # new inlet is an int here
-    if np.size(idx) != 0:
-        new_inlet = np.argmin(
-            barrier_volume[idx]
-        )  # find the instance of min_inlet_separation at the narrowest point
-        new_inlet = idx[new_inlet]
-
-    # add new breach to list of inlets
-    inlet_idx.append(np.array(new_inlet))  # KA: not sure if I need the np.array here
-    # inlet_idx.append([new_inlet])  # LVB: changed to a list
-    # inlet_idx.append(new_inlet)  # LVB: will test out with no list at all
-
-    return inlet_idx, new_inlet
+# def create_inlet(inlet_idx, ny, dy, barrier_volume, min_inlet_separation=10000):
+#     r"""Creates a new inlet at the location of minimum barrier volume, but only if inlets are far enough away from
+#     existing inlets (Roos et al.,2013).
+#
+#         Parameters
+#         ----------
+#         inlet_idx: list of int
+#             Indices of inlet locations
+#         ny: int
+#             Number of alongshore cells
+#         dy: int
+#             Length of alongshore cells [m]
+#         barrier_volume: array
+#             Barrier width times height + estimated inlet depth
+#         min_inlet_separation: int
+#             Minimum separation distance of inlets; from Roos et al., (2013) [m]
+#
+#         Returns
+#         -------
+#         array of integers
+#             new_inlet: index of the newest inlet
+#             inlet_idx: indices of all inlets
+#     """
+#
+#     new_inlet = -1
+#
+#     # calculate basin length
+#     if len(inlet_idx) == 0: #used correct function to get size of the list
+#         # based on matlab version we want to get 1,000 (ny) instances of 10,000 (Jmin)
+#         basin_length = min_inlet_separation * np.ones(int(ny)).astype(float)
+#         # basin_length = min_inlet_separation + np.zeros(int(ny)).astype(float) # DOES NOT WORK IN PYTHON
+#     else:
+#         # NOTE TO ERIC: there might be a more sophisticated way to replicate matlab's bsxfun, but alas I had to divide
+#         # into two operations to get this two work
+#         inlet_idx_mat = np.hstack(inlet_idx)
+#         basin_length = np.ravel(
+#             (
+#                     np.array(([-ny, 0, ny]))
+#                     + np.reshape(
+#                 inlet_idx_mat + 1,
+#                 (np.size(inlet_idx_mat), 1),
+#             )
+#             ).T
+#         )  # apply min_inlet_separation/2 in each direction
+#         basin_length = np.amin(
+#             np.minimum(
+#                 min_inlet_separation,
+#                 2
+#                 * dy
+#                 * np.abs(
+#                     np.arange(1, ny + 1, 1)
+#                     - np.reshape(basin_length, (np.size(basin_length), 1))
+#                 ),
+#             ),
+#             axis=0,
+#         )
+#
+#     # find new inlets only if its far enough away from existing inlets
+#     # i.e., check if there is an instance of min_inlet_separation: if the number of inlets has been saturated,
+#     # then we keep new_inlet empty from previous time loop
+#     # LVB: barrier volume must be same dimensions as idx
+#     # idx = np.nonzero(basin_length > (min_inlet_separation - 1))[0]  # idx is an array from 0-999
+#     idx = []
+#     # new inlet is an int here
+#     if np.size(idx) != 0:
+#         new_inlet = np.argmin(
+#             barrier_volume[idx]
+#         )  # find the instance of min_inlet_separation at the narrowest point
+#         new_inlet = idx[new_inlet]
+#
+#     # add new breach to list of inlets
+#     inlet_idx.append(np.array(new_inlet))  # KA: not sure if I need the np.array here
+#     # inlet_idx.append([new_inlet])  # LVB: changed to a list
+#     # inlet_idx.append(new_inlet)  # LVB: will test out with no list at all
+#
+#     return inlet_idx, new_inlet
 
 
 def organize_inlet(inlet_idx, ny):
@@ -358,6 +359,7 @@ def fluid_mechanics(
 
     # sort inlets (first index only) and find respective tidal prisms
     inlet_all_idx = np.sort(inlet_idx)
+    # print(f'all inlet idx :{inlet_all_idx}')
     inlet_all_idx_idx = np.argsort(inlet_idx)
     inlet_dist = np.diff(
         np.r_[
@@ -366,14 +368,17 @@ def fluid_mechanics(
             inlet_all_idx[0] + ny,
         ]
     )  # distance between inlets
+    # print(f'inlet distance :{inlet_dist}')
+
     basin_length = np.minimum(
         min_inlet_separation,
         (dy * 0.5 * (inlet_dist[0:-1] + inlet_dist[1: len(inlet_dist)])),
     )
-
+    # print(f'basin width :{basin_width}')
+    # print(f'basin length :{basin_length}')
     # see swart zimmerman
-    ah_star = omega0 * w[inlet_idx] / np.sqrt(g * a0) #only the first item in the list was used, edited to input the whole list
-    c_d = g * man_n ** 2 / (d_b[inlet_idx] ** (1 / 3))
+    ah_star = omega0 * w[inlet_idx] / np.sqrt(g * a0) #Nondimensional crossectional area #only the first item in the list was used, edited to input the whole list
+    c_d = g * man_n ** 2 / (d_b[inlet_idx] ** (1 / 3)) #drag
     gam = np.maximum(
         1e-3,
         inlet_asp
@@ -386,17 +391,25 @@ def fluid_mechanics(
                 / g
         )
         ** (1 / 4)
-        / ((8 / 3 / np.pi) * c_d * w[inlet_idx]),
-    )
+        / ((8 / 3 / np.pi) * c_d * (w[inlet_idx]+1e-9)),
+    ) #gamma
+    # print(f'w inletspinner:{w}')
+    # print(f'c_d :{c_d}')
+    # print(f'gam :{gam}')
     a_star_eq = a_star_eq_fun(ah_star, gam, u_e_star)
     u_eq = np.real(u(a_star_eq, gam, ah_star, a0))
+    # print(f'a_star_eq:{a_star_eq}')
+    # print(f'u_eq:{u_eq}')
+    # print(f'omega0:{omega0}')
+    # print(f'a0:{a0}')
+
     ai_eq = (
                     omega0
                     * (1 - marsh_cover)
                     * basin_length[inlet_all_idx_idx]
                     * basin_width[inlet_idx]
                     * np.sqrt(a0 / g)
-            ) * a_star_eq  # KA: does it matter that this was last defined during the Tstorm year?
+            ) * a_star_eq  # RS: equiliburium dimensional crosscectional area # KA: does it matter that this was last defined during the Tstorm year?
 
     # keep inlet open if velocity is at equilibrium (Escoffier); add
     # margin of 0.05 m/s for rounding errors etc
@@ -404,16 +417,20 @@ def fluid_mechanics(
         np.logical_or(np.less(u_eq, (u_e - 0.05)), np.isnan(u_eq)),
         np.greater(w[inlet_idx], 0),
     )
-
+    print(f'inlet closes : {inlet_close}')
     # we don't have to think about this one every again!
+    # print(f"inlet idx mat{inlet_idx_mat} before")
     inlet_idx_mat[inlet_close] = np.nan  # KA: use inlet_idx_mat b/c float
     inlet_idx_close_mat = np.argwhere(np.isnan(inlet_idx_mat))  # KA: get index
     inlet_idx_mat = inlet_idx_mat[~np.isnan(inlet_idx_mat)]
     # KA: again here, inlet_idx is just the first index (still a list), and not sorted
-    inlet_idx = inlet_idx_mat.astype(int).tolist()
+    inlet_idx = inlet_idx_mat.astype(int).tolist(
+    )
+    # print(f"inlet idx mat{inlet_idx_mat} after")
+    # print(f'first time ai_eq:{ai_eq}')
     ai_eq[inlet_close] = np.nan
     ai_eq = ai_eq[~np.isnan(ai_eq)]
-
+    # print(f'second time ai_eq:{ai_eq}')
     wi_eq = np.sqrt(ai_eq) / inlet_asp  # calculate width and depths
     di_eq = ai_eq / wi_eq
     wi_cell = np.ceil(wi_eq / dy).astype(int)  # get cell widths per inlet
@@ -629,7 +646,7 @@ def inlet_morphodynamics(
             inlet_prv[j - 1], inlet_idx[j - 1], inlet_nex[j - 1]
         ].astype(int)
         #Roya, changing this to list
-        temp_idx = temp_idx.tolist()
+        # temp_idx = temp_idx.tolist()
         x_b_fld_dt[temp_idx] = x_b_fld_dt[temp_idx] + fld_delta / (
                 np.size(temp_idx) * dy
         ) / (h_b[temp_idx] + d_b[temp_idx])
@@ -673,18 +690,19 @@ def inlet_morphodynamics(
 
         # add inlet sink to shoreline change (updated May 27, 2020 so that shoreline change from inlet sink
         # now spread out along width of inlet +1 cell in both directions)
-        # self._x_s_dt[inlet_nex[j - 1]] = (
-        #         self._x_s_dt[inlet_nex[j - 1]]
-        #         + inlet_sink / (self._h_b[inlet_nex[j - 1]] + self._d_sf) / self._dy
-        # )
-
-        x_s_dt[temp_idx] = (
-                x_s_dt[temp_idx]
-                + inlet_sink
-                / (h_b[temp_idx] + d_sf)
-                / len(temp_idx)
-                / dy
+        x_s_dt[inlet_nex[j - 1]] = (
+                x_s_dt[inlet_nex[j - 1]]
+                + inlet_sink / (h_b[inlet_nex[j - 1]] + d_sf) / dy
         )
+
+#Roya: not sure what was this x_s_dt[temp_idx], never seen anywhere and after
+#commenting nothing changed
+        # x_s_dt[temp_idx] = (
+        #         x_s_dt[temp_idx]
+        #         + inlet_sink
+        #         / (h_b[temp_idx] + d_sf)
+        #         / dy
+        # )
 
         # inlet age
         # fancy lightweight way to keep track of where inlets are in the model
@@ -696,7 +714,6 @@ def inlet_morphodynamics(
         inlet_age.append(  # KA: shouldn't this be time_index-1?
             [time, inlet_idx[j - 1].astype("int32")] #index was off by 1
         )
-
     # reset arrays
     new_inlet = np.array([])
     return inlet_idx, migr_up, delta, beta, alpha, Qs_in, inlet_age, Qinlet, inlet_y, x_b_fld_dt, x_s_dt #added x_b_fld_dt and x_s_dt to the return values of the funtion to update the variable in brie
@@ -923,9 +940,9 @@ class InletSpinner:
         #     self._z - (self._s_background * self._x_b),
         # )  # basin depth
         # some of these were converted to tuples with one float value? not sure why that is
-        array1 = self._bb_depth[0] * np.ones(np.size(self._x_b))
-        array2 = np.zeros(len(self._x_b))
-        for index, val in enumerate(self._x_b):
+        array1 = self._bb_depth[0] * np.ones(np.size(self._bay_shoreline_x))
+        array2 = np.zeros(len(self._bay_shoreline_x))
+        for index, val in enumerate(self._bay_shoreline_x):
             arr_val = self._z[0] - val * self._s_background[0]
             array2[index] = arr_val
         self._d_b = np.minimum(array1, array2)  # basin depth
@@ -936,7 +953,7 @@ class InletSpinner:
 
         # self._z and self._s_back are tuples of one value
         self._basin_width = np.maximum(0, (self._z[0] / self._s_background[0]) * np.ones(
-            np.size(self._x_b)) - self._x_b)  # basin width
+            np.size(self._bay_shoreline_x)) - self._bay_shoreline_x)  # basin width
 
         # initialize empty arrays
         self._inlet_idx = []
@@ -946,14 +963,14 @@ class InletSpinner:
         #     float
         # )  # KA: we use this variable for NaN operations
         self._inlet_idx_close_mat = np.array([])
-        self._x_s_dt = np.zeros(self._ny)
+        self._shoreline_x_dt = np.zeros(self._ny)
         self._inlet_y = np.zeros(self._ny)
-        self._h_b = 2 * np.ones(self._ny)
+        # self._h_b = 2 * np.ones(self._ny)
         self._barrier_volume = np.array([])
         self._q_s = np.empty_like(self._shoreline_x)
 
         # # array for changes to back barrier due to flood tidal deltas
-        self._x_b_fld_dt = np.zeros(self._ny)
+        self._bay_shoreline_x_fld_dt = np.zeros(self._ny)
 
         if wave_distribution is None:
             wave_distribution = scipy.stats.uniform(loc=-np.pi / 2.0, scale=np.pi)
@@ -969,6 +986,8 @@ class InletSpinner:
     def update(self): #updated value of h_b, and z were only updated in brie module and were not sent to this intel_spinner module.
         # self._h_b = h_b
         # self._z = z
+        print("updating spinner start")
+        print(f'inletspinner inlet idx is: {self._inlet_idx}')
         self._time += int(self._dt)
         self._time = int(self._time)
         self._time_index += 1 # update time index at each iteration
@@ -1015,27 +1034,30 @@ class InletSpinner:
                 - 1
                 ]
         ) # Match qs calculation to the original code for easier comparison
-
+        # print(f'q_s :{self._q_s}')
         # -------------------------------
 
-        self._x_b_fld_dt = np.zeros(int(self._ny))  # reset array of flood tidal deltas
+        self._bay_shoreline_x_fld_dt = np.zeros(int(self._ny))  # reset array of flood tidal deltas
 
         w = self._bay_shoreline_x - self._shoreline_x  # barrier width # used correct updated variable
-
+        # print(f'inletcode: shoreline_x {self._shoreline_x}')
+        # print(f'inletcode: bay_shoreline_x {self._bay_shoreline_x}')
         self._barrier_volume = (
                 w * (self._h_b + 2) * np.sign(np.minimum(w, self._h_b))
         )  # barrier volume = barrier width times height + estimated inlet depth (KA: is inlet depth 2 m?)
-
+        # print(f'inletcode barrier_volume:  {self._barrier_volume}')
         # where there is currently an inlet, set the barrier volume at that location to infinity
-        # if (
-        #         len(self._inlet_idx) != 0
-        # ):  # KA: inlet_idx is a list here with arrays of different sizes (from previous time loop)
-        #     self._barrier_volume[np.hstack(self._inlet_idx)] = np.inf
-        #
-        #
-        #     self._inlet_idx.append(
-        #         np.nonzero(self._barrier_volume < 0)[0]
-        #     )  # add drowned cells to list of inlets
+        if (
+
+                len(self._inlet_idx) != 0
+        ):  # KA: inlet_idx is a list here with arrays of different sizes (from previous time loop)
+            # print(f'#########code works here:')
+            self._barrier_volume[np.hstack(self._inlet_idx)] = np.inf
+            # print(f'id"{self._inlet_idx}, volume:{self._barrier_volume}')
+
+            self._inlet_idx.append(
+                np.nonzero(self._barrier_volume < 0)[0]
+            )  # add drowned cells to list of inlets
 
         #roya commented out this part to prevent making inlet
         # # create a new inlet every # years, unless at max # inlets, or if boolean says to create inlet this year
@@ -1050,10 +1072,10 @@ class InletSpinner:
         #         self._inlet_idx, self._ny, self._dy, self._barrier_volume
         #     )
 
-        #     self._basin_width = np.maximum(0, self._z / self._s_background[0] - self.bay_shoreline_x) #new place for calculation of basin width at each iteration
+            self._basin_width = np.maximum(0, self._z / self._s_background[0] - self.bay_shoreline_x) #new place for calculation of basin width at each iteration
 
         # print(self._inlet_idx)
-        # print(self._new_inlet)
+        print(f'new inlet:{self._new_inlet}')
         if len(self._inlet_idx) != 0:
             self._inlet_idx, self._inlet_idx_mat = organize_inlet(
                 self._inlet_idx, self._ny
@@ -1064,9 +1086,9 @@ class InletSpinner:
             )  # do "fluid mechanics" of inlets
             # in paper they do sediment transport next, but I think it is okay to do it whenever
             #RS, added x_s_dt to return values of the inlet_mprphodynamic function
-            self._inlet_idx, migr_up, delta, beta, alpha, self._Qs_in, self._inlet_age, self._Qinlet, self._inlet_y, self._x_b_fld_dt, self._x_s_dt = \
+            self._inlet_idx, migr_up, delta, beta, alpha, self._Qs_in, self._inlet_age, self._Qinlet, self._inlet_y, self._bay_shoreline_x_fld_dt, self._shoreline_x_dt  = \
                 inlet_morphodynamics(
-                    self._inlet_idx, self._new_inlet, self._time_index, wi_cell, self._ny, self._dy, self._x_b_fld_dt, w, # use time_index instead of time
+                    self._inlet_idx, self._new_inlet, self._time_index, wi_cell, self._ny, self._dy, self._bay_shoreline_x_fld_dt, w, # use time_index instead of time
                     self._q_s, self._h_b, di_eq, self._d_b, self._Qinlet, self._rho_w, ai_eq, wi_eq, self._wave_height,
                     self._bay_shoreline_x, self._shoreline_x, self._x_s_dt, self._w_b_crit, self._omega0, self._inlet_y, self._inlet_age,
                     self._d_sf
@@ -1081,8 +1103,19 @@ class InletSpinner:
             # print("###")
             # print(brie._Qoverwash.mean())
             # print("###")
-            # self._Qinlet = self._Qinlet / self._dt  # put into m3/yr
-            # self._Qinlet_norm = (self._Qinlet / self._dy)  # put into m3/m/yr
+            self._Qinlet = self._Qinlet / self._dt  # put into m3/yr
+            self._Qinlet_norm = (self._Qinlet / self._dy)
+            # print(f'inlet spinner values')# put into m3/m/yr
+            # print(f'inlet idx is: {self._inlet_idx}')
+            # print(f'wi_cell is: {wi_cell}')
+            # print(f'inlet_y is: {self._inlet_y}')
+            # print(f'h_b is: {self._h_b}')
+            # print(f'd_b is: {self._d_b}')
+            # print(f'w is: {w}')
+            # print(f'xs_dt in inlet spinner: {self._x_s_dt}')
+            # print(f'Qinlet is: {self._Qinlet}')
+            # print(f'Qs_in is: {self._q_s}')
+            # print(f'basin width :{self._basin_width}')
 
     @property
     def wave_angle(self):
