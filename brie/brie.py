@@ -837,9 +837,9 @@ class Brie:
             else:
                 # just get the first nonzero element
                 # wave_ang = np.nonzero(self._wave_cdf > np.random.rand())[0][]
-                wave_ang = int(
-                    np.rad2deg(self._angles.next())
-                )  # KA: use the wave generator (which outputs in radians)
+
+                # KA: use the wave generator (which outputs in radians)
+                wave_ang = int(np.rad2deg(self._angles.next(samples=1)[0]))
 
             # sed transport this timestep for given wave angle (KA: NOTE, -1 indexing
             # is for Python)
