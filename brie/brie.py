@@ -255,10 +255,7 @@ class Brie:
             self._R
             * self._g
             * self._grain_size**2
-            / (
-                (18 * 1e-6)
-                + np.sqrt(0.75 * self._R * self._g * (self._grain_size**3))
-            )
+            / ((18 * 1e-6) + np.sqrt(0.75 * self._R * self._g * (self._grain_size**3)))
         )  # settling velocity [m/s] Church & Ferguson (2004)
 
         phi = (
@@ -1028,12 +1025,10 @@ class Brie:
                 )
 
                 # we don't have to think about this one every again!
-                self._inlet_idx_mat[
-                    inlet_close
-                ] = np.nan  # KA: use inlet_idx_mat b/c float
-                self._inlet_idx_close_mat = np.argwhere(
-                    np.isnan(self._inlet_idx_mat)
-                )  # KA: get index
+                # KA: use inlet_idx_mat b/c float
+                self._inlet_idx_mat[inlet_close] = np.nan
+                # KA: get index
+                self._inlet_idx_close_mat = np.argwhere(np.isnan(self._inlet_idx_mat))
                 self._inlet_idx_mat = self._inlet_idx_mat[
                     ~np.isnan(self._inlet_idx_mat)
                 ]
@@ -1255,11 +1250,10 @@ class Brie:
             # inlet statistics
             if np.mod(self._time_index, self._dtsave) == 0:
                 if len(self._inlet_idx) != 0:
+                    # number of inlets
                     self._inlet_nr[
                         np.fix(self._time_index / self._dtsave).astype(int) - 1
-                    ] = len(
-                        self._inlet_idx
-                    )  # number of inlets
+                    ] = len(self._inlet_idx)
                     self._inlet_migr[
                         np.fix(self._time_index / self._dtsave).astype(int) - 1
                     ] = np.mean(migr_up / self._dt)

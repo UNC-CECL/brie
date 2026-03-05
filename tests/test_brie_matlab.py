@@ -4,6 +4,7 @@ Written by K.Anarde
 - imports matlab inputs for seeding of brie.py (for version testing and grid testing)
 
 """
+
 import pathlib
 
 import numpy as np
@@ -45,7 +46,7 @@ def test_case(request):
 
 def run_brie(n_steps, dt, dy, x_shoreline, wave_angle):
     brie = Brie(
-        name=f"dt={dt},dy={dy}",
+        name=f"dt={dt}, dy={dy}",
         bseed=True,
         wave_height=1.0,
         wave_period=7,
