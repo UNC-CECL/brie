@@ -8,6 +8,7 @@ Created on Tue Mar 31 17:21:49 2020
   written in parallel using the package joblib
 
 """
+
 import multiprocessing
 
 import numpy as np

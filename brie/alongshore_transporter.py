@@ -26,6 +26,7 @@ Notes
 All calculations are performed with the domain perspective of looking onshore to
 offshore
 """
+
 import numpy as np
 import scipy.constants
 import scipy.sparse
@@ -454,7 +455,6 @@ def _build_matrix(
 
 
 class AlongshoreTransporter:
-
     """Transport sediment along a coast.
 
     Examples
