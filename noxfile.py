@@ -41,8 +41,8 @@ def test_bmi(session: nox.Session) -> None:
 
     session.run(
         "bmi-test",
-        "--config-file=tests/test_bmi/brie.yaml",
-        "--root-dir=tests/test_bmi",
+        f"--config-file={str(ROOT / 'tests/test_bmi/brie.yaml')}",
+        f"--root-dir={str(ROOT / 'tests/test_bmi')}",
         "-vvv",
         "brie.brie_bmi:BrieBMI",
     )
