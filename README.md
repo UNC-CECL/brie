@@ -4,8 +4,8 @@ BRIE: The Barrier Inlet Environment model
 This is the python version of the BarrieR Inlet Envrionment (*brie*) model written
 by Jaap Nienhuis and Jorge Lorenzo Trueba. The matlab to python conversion was
 performed by Katherine Anarde. Eric Hutton worked to wrap the model with a basic
-model interface. Lexi Van Blunk and Roya Sahraei reorganized model 
-components into classes (i.e., The AlongshoreTransporter, InletSpinner), which 
+model interface. Lexi Van Blunk and Roya Sahraei reorganized model
+components into classes (i.e., The AlongshoreTransporter, InletSpinner), which
 now allows for dynamical testing of different modules (see the Jupyter notebooks)
 and easier coupling with other modeling frameworks.
 
@@ -16,23 +16,23 @@ http://dx.doi.org/10.5194/gmd-2019-10.
 
 ###############################################################################
 # Model dynamics
-Models that simulate barrier island changes over geological timescales (centuries to millenia) 
-typically focus on the role of storm overwash, and its couplings with shoreface and back-barrier dynamics. 
+Models that simulate barrier island changes over geological timescales (centuries to millenia)
+typically focus on the role of storm overwash, and its couplings with shoreface and back-barrier dynamics.
 However, field studies suggest that tidal inlets play a significant role in transgressive
-sediment movement. The *brie* model was developed to test this hypothesis. 
-*brie* combines the cross-shore barrier evolution formulations of Lorenzo-Trueba and Ashton (2014) with 
-tidal inlet morphodynamics described by the Delft3D-derived parameterizations of Nienhuis and Ashton (2016). 
-Storm overwash and shoreface response functions from Lorenzo-Trueba and Ashton (2014) are applied independently 
-to each cross-sectional transect. Cross-shore transects are connected in the alongshore via the diffusive sediment transport 
-model of Ashton and Murray (2006). Transects are converted to inlets based on hydro- and morpho-dynamic 
-criteria; thereafter, inlets can migrate, merge, and close. *brie* is the first long-term morphodynamic model for 
-barrier island evolution that incorporates both 
+sediment movement. The *brie* model was developed to test this hypothesis.
+*brie* combines the cross-shore barrier evolution formulations of Lorenzo-Trueba and Ashton (2014) with
+tidal inlet morphodynamics described by the Delft3D-derived parameterizations of Nienhuis and Ashton (2016).
+Storm overwash and shoreface response functions from Lorenzo-Trueba and Ashton (2014) are applied independently
+to each cross-sectional transect. Cross-shore transects are connected in the alongshore via the diffusive sediment transport
+model of Ashton and Murray (2006). Transects are converted to inlets based on hydro- and morpho-dynamic
+criteria; thereafter, inlets can migrate, merge, and close. *brie* is the first long-term morphodynamic model for
+barrier island evolution that incorporates both
 tidal and overwash sediment fluxes. For a complete description
 of model dynamics, the reader is directed to http://dx.doi.org/10.5194/gmd-2019-10.
 
 In this python version of *brie*, there is functionality to alternatively use Barrier3D
-(Reeves et al., 2019) as the barrier overwash model. Coupling with Barrier3D requires the model CASCADE 
-(Anarde et al., 2024a,b). 
+(Reeves et al., 2019) as the barrier overwash model. Coupling with Barrier3D requires the model CASCADE
+(Anarde et al., 2024a,b).
 
 ###############################################################################
 # Installation
@@ -84,8 +84,8 @@ from brie.brie import Brie
 ```bash
 brie = Brie()
 ```
-For a complete list of default conditions, the reader is directed to Nienhuis et al., 2019. 
-Alternatively, in this python version of *brie*, the variables are defined in the initialization function 
+For a complete list of default conditions, the reader is directed to Nienhuis et al., 2019.
+Alternatively, in this python version of *brie*, the variables are defined in the initialization function
 (i.e., in _init_ ).
 
 **Call the *update* function to advance one time step**
@@ -98,7 +98,7 @@ brie.update()
 for i in range(brie.nt-1):
     if brie.drown:
         break
-    brie.update() 
+    brie.update()
 ```
 
 **Below is an example of a model initialization with initial conditions other than default:**
@@ -123,10 +123,10 @@ brie = Brie(
 )
 ```
 
-**The *finalize* function deletes some variables to make a smaller file for saving. 
+**The *finalize* function deletes some variables to make a smaller file for saving.
 It also modifies the variable Qinlet to have units of m3/m/yr instead of m^3/yr**
-```bash 
-brie.finalize()       
+```bash
+brie.finalize()
 ```
 
 ###############################################################################
