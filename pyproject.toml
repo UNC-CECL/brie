@@ -30,7 +30,7 @@ classifiers = [
 requires-python = ">=3.8"
 dependencies = [
   "bmipy",
-  "numpy",
+  "numpy<2.4",
   "pyyaml",
   "scipy",
 ]
