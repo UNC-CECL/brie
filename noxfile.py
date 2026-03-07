@@ -32,11 +32,11 @@ def test(session: nox.Session) -> None:
         session.run("coverage", "report", "--ignore-errors", "--show-missing")
 
 
-@nox.session(name="test-bmi", venv_backend="mamba")
+@nox.session(name="test-bmi")
 def test_bmi(session: nox.Session) -> None:
     """Run the tests."""
-    session.conda_install("bmi-tester")
-    session.conda_install("--file", "requirements.txt")
+    session.install("bmi-tester")
+    session.install("--file", "requirements.txt")
     session.install(".", "--no-deps")
 
     session.run(
