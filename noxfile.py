@@ -36,7 +36,7 @@ def test(session: nox.Session) -> None:
 def test_bmi(session: nox.Session) -> None:
     """Run the tests."""
     session.install("bmi-tester")
-    session.install("--file", "requirements.txt")
+    session.install("-r", "requirements.txt")
     session.install(".", "--no-deps")
 
     session.run(
