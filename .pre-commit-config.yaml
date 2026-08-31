@@ -1,6 +1,6 @@
 repos:
 - repo: https://github.com/psf/black-pre-commit-mirror
-  rev: 26.3.0
+  rev: 26.5.1
   hooks:
   - id: black
     name: black
@@ -48,7 +48,7 @@ repos:
     args: [--py36-plus]
 
 - repo: https://github.com/PyCQA/isort
-  rev: 8.0.1
+  rev: 9.0.1
   hooks:
   - id: isort
     files: \.py$
@@ -68,7 +68,7 @@ repos:
     - id: trailing-whitespace
 
 - repo: https://github.com/regebro/pyroma
-  rev: "5.0.1"
+  rev: "5.1b1"
   hooks:
   - id: pyroma
     args: ["-d", "--min=10", "."]
